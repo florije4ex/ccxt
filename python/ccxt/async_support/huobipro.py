@@ -31,7 +31,7 @@ class huobipro(Exchange):
             'version': 'v1',
             'accounts': None,
             'accountsById': None,
-            'hostname': 'api.huobi.pro',  # api.testnet.huobi.pro
+            'hostname': {'spot': 'api.huobi.pro', 'swap': 'api.hbdm.com'},  # api.testnet.huobi.pro
             'pro': True,
             'has': {
                 'CORS': False,
@@ -72,6 +72,7 @@ class huobipro(Exchange):
                     'market': 'https://{hostname}',
                     'public': 'https://{hostname}',
                     'private': 'https://{hostname}',
+                    'swap': 'https://{hostname}',
                     'v2Public': 'https://{hostname}',
                     'v2Private': 'https://{hostname}',
                 },
@@ -164,6 +165,17 @@ class huobipro(Exchange):
                         'stable-coin/exchange',
                         'subuser/transfer',
                     ],
+                },
+                'swap': {
+                    'get': [
+                        'swap-ex/market/depth',  # 获取行情深度数据
+                    ],
+                    'post': [
+                        'swap-api/v1/swap_position_info',  # 获取用户持仓信息
+                        'swap-api/v1/swap_order',  # 合约下单
+                        'swap-api/v1/swap_order_info',  # 获取合约订单信息
+                        'swap-api/v1/swap_cancel',  # 撤销订单
+                    ]
                 },
             },
             'fees': {
@@ -1263,9 +1275,13 @@ class huobipro(Exchange):
             url += self.version
         elif (api == 'v2Public') or (api == 'v2Private'):
             url += 'v2'
-        url += '/' + self.implode_params(path, params)
+        if api == 'swap':
+            url += self.implode_params(path, params)
+        else:
+            url += '/' + self.implode_params(path, params)
         query = self.omit(params, self.extract_params(path))
-        if api == 'private' or api == 'v2Private':
+        hostname = self.hostname['swap'] if api == 'swap' else self.hostname['spot']
+        if api == 'private' or api == 'v2Private' or path.startswith('swap-api'):
             self.check_required_credentials()
             timestamp = self.ymdhms(self.milliseconds(), 'T')
             request = {
@@ -1280,7 +1296,7 @@ class huobipro(Exchange):
             auth = self.urlencode(request)
             # unfortunately, PHP demands double quotes for the escaped newline symbol
             # eslint-disable-next-line quotes
-            payload = "\n".join([method, self.hostname, url, auth])
+            payload = "\n".join([method, hostname, url, auth])
             signature = self.hmac(self.encode(payload), self.encode(self.secret), hashlib.sha256, 'base64')
             auth += '&' + self.urlencode({'Signature': signature})
             url += '?' + auth
@@ -1297,9 +1313,11 @@ class huobipro(Exchange):
             if params:
                 url += '?' + self.urlencode(params)
         url = self.implode_params(self.urls['api'][api], {
-            'hostname': self.hostname,
+            'hostname': hostname,
         }) + url
-        return {'url': url, 'method': method, 'body': body, 'headers': headers}
+        result = {'url': url, 'method': method, 'body': body, 'headers': headers}
+        print(result)
+        return result
 
     def handle_errors(self, httpCode, reason, url, method, headers, body, response, requestHeaders, requestBody):
         if response is None:
