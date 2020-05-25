@@ -461,7 +461,7 @@ class okex(Exchange):
                     '33005': ExchangeError,  # {"code": 33005, "message": "repayment amount must exceed 0"}
                     '33006': ExchangeError,  # {"code": 33006, "message": "loan order not found"}
                     '33007': ExchangeError,  # {"code": 33007, "message": "status not found"}
-                    '33008': ExchangeError,  # {"code": 33008, "message": "loan amount cannot exceed the maximum limit"}
+                    '33008': InsufficientFunds,  # {"code": 33008, "message": "loan amount cannot exceed the maximum limit"}
                     '33009': ExchangeError,  # {"code": 33009, "message": "user ID is blank"}
                     '33010': ExchangeError,  # {"code": 33010, "message": "you cannot cancel an order during session 2 of call auction"}
                     '33011': ExchangeError,  # {"code": 33011, "message": "no new market data"}
@@ -1816,7 +1816,10 @@ class okex(Exchange):
             raise ArgumentsRequired(self.id + ' cancelOrder() requires a symbol argument')
         await self.load_markets()
         market = self.market(symbol)
-        type = market['type']
+        defaultType = self.safe_string_2(self.options, 'cancelOrder', 'defaultType', market['type'])
+        type = self.safe_string(params, 'type', defaultType)
+        if type is None:
+            raise ArgumentsRequired(self.id + " cancelOrder requires a type parameter(one of 'spot', 'margin', 'futures', 'swap').")
         method = type + 'PostCancelOrder'
         request = {
             'instrument_id': market['id'],
@@ -2094,7 +2097,10 @@ class okex(Exchange):
             raise ArgumentsRequired(self.id + ' fetchOrdersByState requires a symbol argument')
         await self.load_markets()
         market = self.market(symbol)
-        type = market['type']
+        defaultType = self.safe_string_2(self.options, 'fetchOrder', 'defaultType', market['type'])
+        type = self.safe_string(params, 'type', defaultType)
+        if type is None:
+            raise ArgumentsRequired(self.id + " fetchOrder requires a type parameter(one of 'spot', 'margin', 'futures', 'swap').")
         request = {
             'instrument_id': market['id'],
             # '-2': failed,

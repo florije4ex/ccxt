@@ -440,7 +440,7 @@ class okex extends Exchange {
                     '33005' => '\\ccxt\\ExchangeError', // array( "code" => 33005, "message" => "repayment amount must exceed 0" )
                     '33006' => '\\ccxt\\ExchangeError', // array( "code" => 33006, "message" => "loan order not found" )
                     '33007' => '\\ccxt\\ExchangeError', // array( "code" => 33007, "message" => "status not found" )
-                    '33008' => '\\ccxt\\ExchangeError', // array( "code" => 33008, "message" => "loan amount cannot exceed the maximum limit" )
+                    '33008' => '\\ccxt\\InsufficientFunds', // array( "code" => 33008, "message" => "loan amount cannot exceed the maximum limit" )
                     '33009' => '\\ccxt\\ExchangeError', // array( "code" => 33009, "message" => "user ID is blank" )
                     '33010' => '\\ccxt\\ExchangeError', // array( "code" => 33010, "message" => "you cannot cancel an order during session 2 of call auction" )
                     '33011' => '\\ccxt\\ExchangeError', // array( "code" => 33011, "message" => "no new market data" )
@@ -1862,7 +1862,11 @@ class okex extends Exchange {
         }
         $this->load_markets();
         $market = $this->market($symbol);
-        $type = $market['type'];
+        $defaultType = $this->safe_string_2($this->options, 'cancelOrder', 'defaultType', $market['type']);
+        $type = $this->safe_string($params, 'type', $defaultType);
+        if ($type === null) {
+            throw new ArgumentsRequired($this->id . " cancelOrder requires a $type parameter (one of 'spot', 'margin', 'futures', 'swap').");
+        }
         $method = $type . 'PostCancelOrder';
         $request = array(
             'instrument_id' => $market['id'],
@@ -2164,7 +2168,11 @@ class okex extends Exchange {
         }
         $this->load_markets();
         $market = $this->market($symbol);
-        $type = $market['type'];
+        $defaultType = $this->safe_string_2($this->options, 'fetchOrder', 'defaultType', $market['type']);
+        $type = $this->safe_string($params, 'type', $defaultType);
+        if ($type === null) {
+            throw new ArgumentsRequired($this->id . " fetchOrder requires a $type parameter (one of 'spot', 'margin', 'futures', 'swap').");
+        }
         $request = array(
             'instrument_id' => $market['id'],
             // '-2' => failed,
