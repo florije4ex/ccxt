@@ -1315,9 +1315,7 @@ class huobipro(Exchange):
         url = self.implode_params(self.urls['api'][api], {
             'hostname': hostname,
         }) + url
-        result = {'url': url, 'method': method, 'body': body, 'headers': headers}
-        print(result)
-        return result
+        return {'url': url, 'method': method, 'body': body, 'headers': headers}
 
     def handle_errors(self, httpCode, reason, url, method, headers, body, response, requestHeaders, requestBody):
         if response is None:
