@@ -31,7 +31,7 @@ class huobipro(Exchange):
             'version': 'v1',
             'accounts': None,
             'accountsById': None,
-            'hostname': {'spot': 'api.huobi.pro', 'swap': 'api.hbdm.com'},  # api.testnet.huobi.pro
+            'hostname': {'spot': 'api.huobi.pro', 'swap': 'api.btcgateway.pro'},  # api.testnet.huobi.pro
             'pro': True,
             'has': {
                 'CORS': False,
