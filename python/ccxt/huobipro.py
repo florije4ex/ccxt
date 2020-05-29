@@ -31,6 +31,7 @@ class huobipro(Exchange):
             'version': 'v1',
             'accounts': None,
             'accountsById': None,
+            # 'hostname': {'spot': 'api.huobi.pro', 'swap': 'api.hbdm.com'},  # api.testnet.huobi.pro
             'hostname': {'spot': 'api.huobi.pro', 'swap': 'api.btcgateway.pro'},  # api.testnet.huobi.pro
             'pro': True,
             'has': {
@@ -96,6 +97,7 @@ class huobipro(Exchange):
                     ],
                     'post': [
                         'sub-user/management',
+                        'account/transfer',
                     ],
                 },
                 'market': {
@@ -171,7 +173,9 @@ class huobipro(Exchange):
                         'swap-ex/market/depth',  # 获取行情深度数据
                     ],
                     'post': [
+                        'swap-api/v1/swap_account_info',  # 获取用户账户信息
                         'swap-api/v1/swap_position_info',  # 获取用户持仓信息
+                        'swap-api/v1/swap_account_position_info',  # 查询用户账户和持仓信息
                         'swap-api/v1/swap_order',  # 合约下单
                         'swap-api/v1/swap_order_info',  # 获取合约订单信息
                         'swap-api/v1/swap_cancel',  # 撤销订单
