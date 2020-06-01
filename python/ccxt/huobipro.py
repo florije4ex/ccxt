@@ -179,6 +179,7 @@ class huobipro(Exchange):
                         'swap-api/v1/swap_order',  # 合约下单
                         'swap-api/v1/swap_order_info',  # 获取合约订单信息
                         'swap-api/v1/swap_cancel',  # 撤销订单
+                        'swap-api/v1/swap_hisorders',  # 获取历史订单
                     ]
                 },
             },
