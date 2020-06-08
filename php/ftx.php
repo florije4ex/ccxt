@@ -98,6 +98,7 @@ class ftx extends Exchange {
                         'lt/redemptions',
                         'subaccounts',
                         'subaccounts/{nickname}/balances',
+                        'otc/quotes/{quoteId}',
                     ),
                     'post' => array(
                         'account/leverage',
@@ -109,6 +110,8 @@ class ftx extends Exchange {
                         'subaccounts',
                         'subaccounts/update_name',
                         'subaccounts/transfer',
+                        'otc/quotes/{quote_id}/accept',
+                        'otc/quotes',
                     ),
                     'delete' => array(
                         'orders/{order_id}',
@@ -578,7 +581,7 @@ class ftx extends Exchange {
         //     }
         //
         $result = $this->safe_value($response, 'result', array());
-        return $this->parse_ohlcvs($result, $market, $timeframe, $since, $limit);
+        return $this->parse_ohlcvs($result, $market);
     }
 
     public function parse_trade($trade, $market = null) {
@@ -926,7 +929,7 @@ class ftx extends Exchange {
         );
         $clientOrderId = $this->safe_string_2($params, 'clientId', 'clientOrderId');
         if ($clientOrderId !== null) {
-            $params['clientId'] = $clientOrderId;
+            $request['clientId'] = $clientOrderId;
             $params = $this->omit($params, array( 'clientId', 'clientOrderId' ));
         }
         $priceToPrecision = null;
