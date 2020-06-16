@@ -485,7 +485,7 @@ module.exports = class coinbasepro extends Exchange {
         return this.parseTrades (response, market, since, limit);
     }
 
-    parseOHLCV (ohlcv, market = undefined, timeframe = '1m', since = undefined, limit = undefined) {
+    parseOHLCV (ohlcv, market = undefined) {
         //
         //     [
         //         1591514160,
@@ -530,7 +530,7 @@ module.exports = class coinbasepro extends Exchange {
         //         [1591514040,0.02505,0.02507,0.02505,0.02507,0.19918178]
         //     ]
         //
-        return this.parseOHLCVs (response, market);
+        return this.parseOHLCVs (response, market, timeframe, since, limit);
     }
 
     async fetchTime (params = {}) {

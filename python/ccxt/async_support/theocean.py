@@ -181,7 +181,7 @@ class theocean(Exchange):
             })
         return result
 
-    def parse_ohlcv(self, ohlcv, market=None, timeframe='5m', since=None, limit=None):
+    def parse_ohlcv(self, ohlcv, market=None):
         #
         #     {
         #         "market_id":"ETH-BTC",
@@ -238,7 +238,7 @@ class theocean(Exchange):
         #         }
         #     ]
         #
-        return self.parse_ohlcvs(response, market)
+        return self.parse_ohlcvs(response, market, timeframe, since, limit)
 
     async def fetch_balance_by_code(self, code, params={}):
         if not self.walletAddress or (self.walletAddress.find('0x') != 0):

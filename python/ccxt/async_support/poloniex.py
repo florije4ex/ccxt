@@ -30,7 +30,7 @@ class poloniex(Exchange):
             'name': 'Poloniex',
             'countries': ['US'],
             'rateLimit': 1000,  # up to 6 calls per second
-            'certified': True,  # 2019-06-07
+            'certified': False,
             'pro': True,
             'has': {
                 'CORS': False,
@@ -231,7 +231,7 @@ class poloniex(Exchange):
             'cost': float(self.fee_to_precision(symbol, cost)),
         }
 
-    def parse_ohlcv(self, ohlcv, market=None, timeframe='5m', since=None, limit=None):
+    def parse_ohlcv(self, ohlcv, market=None):
         #
         #     {
         #         "date":1590913773,
@@ -279,7 +279,7 @@ class poloniex(Exchange):
         #         {"date":1590914100,"high":0.02498596,"low":0.02488503,"open":0.02493033,"close":0.02497896,"volume":0.21196348,"quoteVolume":8.50291888,"weightedAverage":0.02492832},
         #     ]
         #
-        return self.parse_ohlcvs(response, market)
+        return self.parse_ohlcvs(response, market, timeframe, since, limit)
 
     async def fetch_markets(self, params={}):
         markets = await self.publicGetReturnTicker(params)

@@ -906,7 +906,7 @@ class bitfinex extends Exchange {
         return $this->parse_order($response);
     }
 
-    public function parse_ohlcv($ohlcv, $market = null, $timeframe = '1m', $since = null, $limit = null) {
+    public function parse_ohlcv($ohlcv, $market = null) {
         //
         //     array(
         //         1457539800000,
@@ -951,7 +951,7 @@ class bitfinex extends Exchange {
         //         [1457550240000,0.0255,0.0253,0.0255,0.0252,3.2640000000000002],
         //     ]
         //
-        return $this->parse_ohlcvs($response, $market);
+        return $this->parse_ohlcvs($response, $market, $timeframe, $since, $limit);
     }
 
     public function get_currency_name($code) {

@@ -903,7 +903,7 @@ module.exports = class bitfinex extends Exchange {
         return this.parseOrder (response);
     }
 
-    parseOHLCV (ohlcv, market = undefined, timeframe = '1m', since = undefined, limit = undefined) {
+    parseOHLCV (ohlcv, market = undefined) {
         //
         //     [
         //         1457539800000,
@@ -948,7 +948,7 @@ module.exports = class bitfinex extends Exchange {
         //         [1457550240000,0.0255,0.0253,0.0255,0.0252,3.2640000000000002],
         //     ]
         //
-        return this.parseOHLCVs (response, market);
+        return this.parseOHLCVs (response, market, timeframe, since, limit);
     }
 
     getCurrencyName (code) {

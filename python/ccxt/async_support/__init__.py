@@ -4,7 +4,7 @@
 
 # -----------------------------------------------------------------------------
 
-__version__ = '1.29.52'
+__version__ = '1.30.4'
 
 # -----------------------------------------------------------------------------
 
@@ -135,7 +135,6 @@ from ccxt.async_support.idex import idex                                  # noqa
 from ccxt.async_support.independentreserve import independentreserve      # noqa: F401
 from ccxt.async_support.indodax import indodax                            # noqa: F401
 from ccxt.async_support.itbit import itbit                                # noqa: F401
-from ccxt.async_support.kkex import kkex                                  # noqa: F401
 from ccxt.async_support.kraken import kraken                              # noqa: F401
 from ccxt.async_support.kucoin import kucoin                              # noqa: F401
 from ccxt.async_support.kuna import kuna                                  # noqa: F401
@@ -169,6 +168,7 @@ from ccxt.async_support.topq import topq                                  # noqa
 from ccxt.async_support.upbit import upbit                                # noqa: F401
 from ccxt.async_support.vaultoro import vaultoro                          # noqa: F401
 from ccxt.async_support.vbtc import vbtc                                  # noqa: F401
+from ccxt.async_support.wavesexchange import wavesexchange                # noqa: F401
 from ccxt.async_support.whitebit import whitebit                          # noqa: F401
 from ccxt.async_support.xbtce import xbtce                                # noqa: F401
 from ccxt.async_support.yobit import yobit                                # noqa: F401
@@ -261,7 +261,6 @@ exchanges = [
     'independentreserve',
     'indodax',
     'itbit',
-    'kkex',
     'kraken',
     'kucoin',
     'kuna',
@@ -295,6 +294,7 @@ exchanges = [
     'upbit',
     'vaultoro',
     'vbtc',
+    'wavesexchange',
     'whitebit',
     'xbtce',
     'yobit',

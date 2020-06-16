@@ -102,7 +102,7 @@ The CCXT library currently supports the following 124 cryptocurrency exchange ma
 +-----------------------------------------------------------------------------------------+--------------------+-----------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+---------------------------------+
 | `bitmart <http://www.bitmart.com/?r=rQCFLh>`__                                          | bitmart            | `BitMart <http://www.bitmart.com/?r=rQCFLh>`__                                          | 2   | `API <https://github.com/bitmartexchange/bitmart-official-api-docs>`__                          |                                                                      |                                 |
 +-----------------------------------------------------------------------------------------+--------------------+-----------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+---------------------------------+
-| `bitmax <https://bitmax.io/#/register?inviteCode=EL6BXBQM>`__                           | bitmax             | `BitMax <https://bitmax.io/#/register?inviteCode=EL6BXBQM>`__                           | 1   | `API <https://github.com/bitmax-exchange/api-doc/blob/master/bitmax-api-doc-v1.2.md>`__         |                                                                      |                                 |
+| `bitmax <https://bitmax.io/#/register?inviteCode=EL6BXBQM>`__                           | bitmax             | `BitMax <https://bitmax.io/#/register?inviteCode=EL6BXBQM>`__                           | 1   | `API <https://bitmax-exchange.github.io/bitmax-pro-api/#bitmax-pro-api-documentation>`__        |                                                                      |                                 |
 +-----------------------------------------------------------------------------------------+--------------------+-----------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+---------------------------------+
 | `bitmex <https://www.bitmex.com/register/upZpOX>`__                                     | bitmex             | `BitMEX <https://www.bitmex.com/register/upZpOX>`__                                     | 1   | `API <https://www.bitmex.com/app/apiOverview>`__                                                |                                                                      | `CCXT Pro <https://ccxt.pro>`__ |
 +-----------------------------------------------------------------------------------------+--------------------+-----------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+---------------------------------+
@@ -1051,7 +1051,7 @@ Methods For Markets And Currencies
    etheur1 = exchange.markets['ETH/EUR']      # get market structure by symbol
    etheur2 = exchange.market ('ETH/EUR')      # same result in a slightly different way
 
-   etheurId = exchange.market_id ('BTC/USD')  # get market id by symbol
+   etheurId = exchange.market_id ('ETH/EUR')  # get market id by symbol
 
    symbols = exchange.symbols                 # get a list of symbols
    symbols2 = list (exchange.markets.keys ()) # same as previous line
@@ -1894,6 +1894,8 @@ Check the ``exchange.has['fetchTicker']`` and ``exchange.has['fetchTickers']`` p
 Ticker structure
 ~~~~~~~~~~~~~~~~
 
+A ticker is a statistical calculation with the information calculated over the past 24 hours for a specific market.
+
 The structure of a ticker is as follows:
 
 .. code:: javascript
@@ -1924,6 +1926,7 @@ The structure of a ticker is as follows:
 Notes On Ticker Structure
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
+-  All fields in the ticker represent the past 24 hours prior to ``timestamp``.
 -  The ``bidVolume`` is the volume (amount) of current best bid in the orderbook.
 -  The ``askVolume`` is the volume (amount) of current best ask in the orderbook.
 -  The ``baseVolume`` is the amount of base currency traded (bought or sold) in last 24 hours.

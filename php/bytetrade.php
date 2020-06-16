@@ -436,7 +436,7 @@ class bytetrade extends Exchange {
         return $this->parse_tickers($rawTickers, $symbols);
     }
 
-    public function parse_ohlcv($ohlcv, $market = null, $timeframe = '1m', $since = null, $limit = null) {
+    public function parse_ohlcv($ohlcv, $market = null) {
         //
         //     array(
         //         1591505760000,
@@ -478,7 +478,7 @@ class bytetrade extends Exchange {
         //         [1591505880000,"242.72","242.73","242.61","242.72","0.4141"],
         //     ]
         //
-        return $this->parse_ohlcvs($response, $market);
+        return $this->parse_ohlcvs($response, $market, $timeframe, $since, $limit);
     }
 
     public function parse_trade($trade, $market = null) {
@@ -947,7 +947,7 @@ class bytetrade extends Exchange {
         }
         $this->load_markets();
         $currency = $this->currency($code);
-        $amountTruncate = $this->decimal_to_precision($amount, TRUNCATE, $currency['info']['transferPrecision'], DECIMAL_PLACES, NO_PADDING);
+        $amountTruncate = $this->decimal_to_precision($amount, TRUNCATE, $currency['info']['basePrecision'] - $currency['info']['transferPrecision'], DECIMAL_PLACES, NO_PADDING);
         $amountChain = $this->to_wei($amountTruncate, $currency['precision']['amount']);
         $assetType = intval ($currency['id']);
         $now = $this->milliseconds();
@@ -1228,7 +1228,7 @@ class bytetrade extends Exchange {
         $feeAmount = '300000000000000';
         $currency = $this->currency($code);
         $coinId = $currency['id'];
-        $amountTruncate = $this->decimal_to_precision($amount, TRUNCATE, $currency['info']['transferPrecision'], DECIMAL_PLACES, NO_PADDING);
+        $amountTruncate = $this->decimal_to_precision($amount, TRUNCATE, $currency['info']['basePrecision'] - $currency['info']['transferPrecision'], DECIMAL_PLACES, NO_PADDING);
         $amountChain = $this->to_wei($amountTruncate, $currency['info']['externalPrecision']);
         $eightBytes = $this->integer_pow('2', '64');
         $assetFee = 0;

@@ -483,7 +483,7 @@ class coinbasepro(Exchange):
         response = self.publicGetProductsIdTrades(self.extend(request, params))
         return self.parse_trades(response, market, since, limit)
 
-    def parse_ohlcv(self, ohlcv, market=None, timeframe='1m', since=None, limit=None):
+    def parse_ohlcv(self, ohlcv, market=None):
         #
         #     [
         #         1591514160,
@@ -525,7 +525,7 @@ class coinbasepro(Exchange):
         #         [1591514040,0.02505,0.02507,0.02505,0.02507,0.19918178]
         #     ]
         #
-        return self.parse_ohlcvs(response, market)
+        return self.parse_ohlcvs(response, market, timeframe, since, limit)
 
     def fetch_time(self, params={}):
         response = self.publicGetTime(params)

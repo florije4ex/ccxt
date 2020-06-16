@@ -1300,7 +1300,7 @@ class okex extends Exchange {
         return $this->parse_trades($response, $market, $since, $limit);
     }
 
-    public function parse_ohlcv($ohlcv, $market = null, $timeframe = '1m', $since = null, $limit = null) {
+    public function parse_ohlcv($ohlcv, $market = null) {
         //
         // spot markets
         //
@@ -1421,7 +1421,7 @@ class okex extends Exchange {
         //         )
         //     )
         //
-        return $this->parse_ohlcvs($response, $market);
+        return $this->parse_ohlcvs($response, $market, $timeframe, $since, $limit);
     }
 
     public function parse_account_balance($response) {
@@ -3018,6 +3018,10 @@ class okex extends Exchange {
         //         ),
         //     )
         //
+        $responseLength = is_array($response) ? count($response) : 0;
+        if ($responseLength < 1) {
+            return array();
+        }
         $isArray = gettype($response[0]) === 'array' && count(array_filter(array_keys($response[0]), 'is_string')) == 0;
         $isMargin = ($type === 'margin');
         $entries = ($isMargin && $isArray) ? $response[0] : $response;

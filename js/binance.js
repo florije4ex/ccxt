@@ -123,6 +123,7 @@ module.exports = class binance extends Exchange {
                         'sub-account/margin/account',
                         'sub-account/margin/accountSummary',
                         'sub-account/status',
+                        'sub-account/transfer/subUserHistory',
                         // lending endpoints
                         'lending/daily/product/list',
                         'lending/daily/userLeftQuota',
@@ -785,7 +786,7 @@ module.exports = class binance extends Exchange {
         return this.parseTickers (response, symbols);
     }
 
-    parseOHLCV (ohlcv, market = undefined, timeframe = '1m', since = undefined, limit = undefined) {
+    parseOHLCV (ohlcv, market = undefined) {
         //
         //     [
         //         1591478520000,
@@ -834,7 +835,7 @@ module.exports = class binance extends Exchange {
         //         [1591478640000,"0.02500800","0.02501100","0.02500300","0.02500800","154.14200000",1591478699999,"3.85405839",97,"5.32300000","0.13312641","0"],
         //     ]
         //
-        return this.parseOHLCVs (response, market);
+        return this.parseOHLCVs (response, market, timeframe, since, limit);
     }
 
     parseTrade (trade, market = undefined) {
@@ -1216,8 +1217,8 @@ module.exports = class binance extends Exchange {
             const test = this.safeValue (params, 'test', false);
             if (test) {
                 method += 'Test';
-                params = this.omit (params, 'test');
             }
+            params = this.omit (params, 'test');
         }
         const uppercaseType = type.toUpperCase ();
         const validOrderTypes = this.safeValue (market['info'], 'orderTypes');
@@ -1232,46 +1233,81 @@ module.exports = class binance extends Exchange {
         if (clientOrderId !== undefined) {
             request['newClientOrderId'] = clientOrderId;
         }
-        const quoteOrderQty = this.safeValue (this.options, 'quoteOrderQty', false);
-        if (uppercaseType === 'MARKET' && quoteOrderQty) {
-            const quoteOrderQty = this.safeFloat (params, 'quoteOrderQty');
-            const precision = market['precision']['price'];
-            if (quoteOrderQty !== undefined) {
-                request['quoteOrderQty'] = this.decimalToPrecision (quoteOrderQty, TRUNCATE, precision, this.precisionMode);
-                params = this.omit (params, 'quoteOrderQty');
-            } else if (price !== undefined) {
-                request['quoteOrderQty'] = this.decimalToPrecision (amount * price, TRUNCATE, precision, this.precisionMode);
-            } else {
-                request['quantity'] = this.amountToPrecision (symbol, amount);
-            }
-        } else {
-            request['quantity'] = this.amountToPrecision (symbol, amount);
-        }
         if (market['spot']) {
             request['newOrderRespType'] = this.safeValue (this.options['newOrderRespType'], type, 'RESULT'); // 'ACK' for order id, 'RESULT' for full order or 'FULL' for order with fills
         }
+        // additional required fields depending on the order type
         let timeInForceIsRequired = false;
         let priceIsRequired = false;
         let stopPriceIsRequired = false;
-        if (uppercaseType === 'LIMIT') {
+        let quantityIsRequired = false;
+        //
+        // spot/margin
+        //
+        //     LIMIT                timeInForce, quantity, price
+        //     MARKET               quantity or quoteOrderQty
+        //     STOP_LOSS            quantity, stopPrice
+        //     STOP_LOSS_LIMIT      timeInForce, quantity, price, stopPrice
+        //     TAKE_PROFIT          quantity, stopPrice
+        //     TAKE_PROFIT_LIMIT    timeInForce, quantity, price, stopPrice
+        //     LIMIT_MAKER          quantity, price
+        //
+        // futures
+        //
+        //     LIMIT                timeInForce, quantity, price
+        //     MARKET               quantity
+        //     STOP/TAKE_PROFIT     quantity, price, stopPrice
+        //     STOP_MARKET          stopPrice
+        //     TAKE_PROFIT_MARKET   stopPrice
+        //     TRAILING_STOP_MARKET callbackRate
+        //
+        if (uppercaseType === 'MARKET') {
+            const quoteOrderQty = this.safeValue (this.options, 'quoteOrderQty', false);
+            if (quoteOrderQty) {
+                const quoteOrderQty = this.safeFloat (params, 'quoteOrderQty');
+                const precision = market['precision']['price'];
+                if (quoteOrderQty !== undefined) {
+                    request['quoteOrderQty'] = this.decimalToPrecision (quoteOrderQty, TRUNCATE, precision, this.precisionMode);
+                    params = this.omit (params, 'quoteOrderQty');
+                } else if (price !== undefined) {
+                    request['quoteOrderQty'] = this.decimalToPrecision (amount * price, TRUNCATE, precision, this.precisionMode);
+                } else {
+                    quantityIsRequired = true;
+                }
+            } else {
+                quantityIsRequired = true;
+            }
+        } else if (uppercaseType === 'LIMIT') {
             priceIsRequired = true;
             timeInForceIsRequired = true;
+            quantityIsRequired = true;
         } else if ((uppercaseType === 'STOP_LOSS') || (uppercaseType === 'TAKE_PROFIT')) {
             stopPriceIsRequired = true;
+            quantityIsRequired = true;
             if (market['future']) {
                 priceIsRequired = true;
             }
         } else if ((uppercaseType === 'STOP_LOSS_LIMIT') || (uppercaseType === 'TAKE_PROFIT_LIMIT')) {
+            quantityIsRequired = true;
             stopPriceIsRequired = true;
             priceIsRequired = true;
             timeInForceIsRequired = true;
         } else if (uppercaseType === 'LIMIT_MAKER') {
             priceIsRequired = true;
+            quantityIsRequired = true;
         } else if (uppercaseType === 'STOP') {
+            quantityIsRequired = true;
             stopPriceIsRequired = true;
             priceIsRequired = true;
-        } else if (uppercaseType === 'STOP_MARKET') {
+        } else if ((uppercaseType === 'STOP_MARKET') || (uppercaseType === 'TAKE_PROFIT_MARKET')) {
+            const closePosition = this.safeValue (params, 'closePosition');
+            if (closePosition === undefined) {
+                quantityIsRequired = true;
+            }
             stopPriceIsRequired = true;
+        }
+        if (quantityIsRequired) {
+            request['quantity'] = this.amountToPrecision (symbol, amount);
         }
         if (priceIsRequired) {
             if (price === undefined) {
@@ -1441,7 +1477,7 @@ module.exports = class binance extends Exchange {
         const defaultType = this.safeString2 (this.options, 'fetchOpenOrders', 'defaultType', market['type']);
         const type = this.safeString (params, 'type', defaultType);
         // https://github.com/ccxt/ccxt/issues/6507
-        const origClientOrderId = this.safeValue (params, 'origClientOrderId');
+        const origClientOrderId = this.safeValue2 (params, 'origClientOrderId', 'clientOrderId');
         const request = {
             'symbol': market['id'],
             // 'orderId': parseInt (id),
@@ -1458,7 +1494,7 @@ module.exports = class binance extends Exchange {
         } else if (type === 'margin') {
             method = 'sapiDeleteMarginOrder';
         }
-        const query = this.omit (params, 'type');
+        const query = this.omit (params, [ 'type', 'origClientOrderId', 'clientOrderId' ]);
         const response = await this[method] (this.extend (request, query));
         return this.parseOrder (response);
     }

@@ -432,7 +432,7 @@ module.exports = class bytetrade extends Exchange {
         return this.parseTickers (rawTickers, symbols);
     }
 
-    parseOHLCV (ohlcv, market = undefined, timeframe = '1m', since = undefined, limit = undefined) {
+    parseOHLCV (ohlcv, market = undefined) {
         //
         //     [
         //         1591505760000,
@@ -474,7 +474,7 @@ module.exports = class bytetrade extends Exchange {
         //         [1591505880000,"242.72","242.73","242.61","242.72","0.4141"],
         //     ]
         //
-        return this.parseOHLCVs (response, market);
+        return this.parseOHLCVs (response, market, timeframe, since, limit);
     }
 
     parseTrade (trade, market = undefined) {
@@ -943,7 +943,7 @@ module.exports = class bytetrade extends Exchange {
         }
         await this.loadMarkets ();
         const currency = this.currency (code);
-        const amountTruncate = this.decimalToPrecision (amount, TRUNCATE, currency['info']['transferPrecision'], DECIMAL_PLACES, NO_PADDING);
+        const amountTruncate = this.decimalToPrecision (amount, TRUNCATE, currency['info']['basePrecision'] - currency['info']['transferPrecision'], DECIMAL_PLACES, NO_PADDING);
         const amountChain = this.toWei (amountTruncate, currency['precision']['amount']);
         const assetType = parseInt (currency['id']);
         const now = this.milliseconds ();
@@ -1224,7 +1224,7 @@ module.exports = class bytetrade extends Exchange {
         const feeAmount = '300000000000000';
         const currency = this.currency (code);
         const coinId = currency['id'];
-        const amountTruncate = this.decimalToPrecision (amount, TRUNCATE, currency['info']['transferPrecision'], DECIMAL_PLACES, NO_PADDING);
+        const amountTruncate = this.decimalToPrecision (amount, TRUNCATE, currency['info']['basePrecision'] - currency['info']['transferPrecision'], DECIMAL_PLACES, NO_PADDING);
         const amountChain = this.toWei (amountTruncate, currency['info']['externalPrecision']);
         const eightBytes = this.integerPow ('2', '64');
         let assetFee = 0;

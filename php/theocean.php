@@ -179,7 +179,7 @@ class theocean extends Exchange {
         return $result;
     }
 
-    public function parse_ohlcv($ohlcv, $market = null, $timeframe = '5m', $since = null, $limit = null) {
+    public function parse_ohlcv($ohlcv, $market = null) {
         //
         //     {
         //         "market_id":"ETH-BTC",
@@ -238,7 +238,7 @@ class theocean extends Exchange {
         //         }
         //     )
         //
-        return $this->parse_ohlcvs($response, $market);
+        return $this->parse_ohlcvs($response, $market, $timeframe, $since, $limit);
     }
 
     public function fetch_balance_by_code($code, $params = array ()) {

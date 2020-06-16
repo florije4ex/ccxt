@@ -135,11 +135,6 @@ class bybit extends Exchange {
                         'stop-order/list',
                         'stop-order/search',
                         'position/list',
-                        'position/set-auto-add-margin',
-                        'position/set-leverage',
-                        'position/switch-isolated',
-                        'position/trading-stop',
-                        'position/add-margin',
                         'trade/execution/list',
                         'trade/closed-pnl/list',
                         'risk-limit',
@@ -153,6 +148,11 @@ class bybit extends Exchange {
                         'stop-order/create',
                         'stop-order/cancel',
                         'stop-order/cancelAll',
+                        'position/switch-isolated',
+                        'position/set-auto-add-margin',
+                        'position/set-leverage',
+                        'position/trading-stop',
+                        'position/add-margin',
                     ),
                 ),
                 'position' => array(
@@ -648,7 +648,7 @@ class bybit extends Exchange {
         return $this->filter_by_array($tickers, 'symbol', $symbols);
     }
 
-    public function parse_ohlcv($ohlcv, $market = null, $timeframe = '1m', $since = null, $limit = null) {
+    public function parse_ohlcv($ohlcv, $market = null) {
         //
         // inverse perpetual BTC/USD
         //
@@ -761,7 +761,7 @@ class bybit extends Exchange {
         //     }
         //
         $result = $this->safe_value($response, 'result', array());
-        return $this->parse_ohlcvs($result, $market);
+        return $this->parse_ohlcvs($result, $market, $timeframe, $since, $limit);
     }
 
     public function parse_trade($trade, $market = null) {
@@ -1680,6 +1680,8 @@ class bybit extends Exchange {
         $method = ($marketType === 'linear') ? 'privateLinearGetTradeExecutionList' : 'privateGetExecutionList';
         $response = $this->$method (array_merge($request, $params));
         //
+        // inverse
+        //
         //     {
         //         "ret_code" => 0,
         //         "ret_msg" => "OK",
@@ -1719,8 +1721,48 @@ class bybit extends Exchange {
         //         "rate_limit" => 120
         //     }
         //
+        // linear
+        //
+        //     {
+        //         "ret_code":0,
+        //         "ret_msg":"OK",
+        //         "ext_code":"",
+        //         "ext_info":"",
+        //         "$result":{
+        //             "current_page":1,
+        //             "data":array(
+        //                 array(
+        //                     "order_id":"b59418ec-14d4-4ef9-b9f4-721d5d576974",
+        //                     "order_link_id":"",
+        //                     "side":"Sell",
+        //                     "$symbol":"BTCUSDT",
+        //                     "exec_id":"0327284d-faec-5191-bd89-acc5b4fafda9",
+        //                     "price":0.5,
+        //                     "order_price":0.5,
+        //                     "order_qty":0.01,
+        //                     "order_type":"Market",
+        //                     "fee_rate":0.00075,
+        //                     "exec_price":9709.5,
+        //                     "exec_type":"Trade",
+        //                     "exec_qty":0.01,
+        //                     "exec_fee":0.07282125,
+        //                     "exec_value":97.095,
+        //                     "leaves_qty":0,
+        //                     "closed_size":0.01,
+        //                     "last_liquidity_ind":"RemovedLiquidity",
+        //                     "trade_time":1591648052,
+        //                     "trade_time_ms":1591648052861
+        //                 }
+        //             )
+        //         ),
+        //         "time_now":"1591736501.979264",
+        //         "rate_limit_status":119,
+        //         "rate_limit_reset_ms":1591736501974,
+        //         "rate_limit":120
+        //     }
+        //
         $result = $this->safe_value($response, 'result', array());
-        $trades = $this->safe_value($result, 'trade_list', array());
+        $trades = $this->safe_value_2($result, 'trade_list', 'data', array());
         return $this->parse_trades($trades, $market, $since, $limit);
     }
 

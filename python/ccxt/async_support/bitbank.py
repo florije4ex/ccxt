@@ -225,7 +225,7 @@ class bitbank(Exchange):
         response = await self.publicGetPairTransactions(self.extend(request, params))
         return self.parse_trades(response['data']['transactions'], market, since, limit)
 
-    def parse_ohlcv(self, ohlcv, market=None, timeframe='5m', since=None, limit=None):
+    def parse_ohlcv(self, ohlcv, market=None):
         #
         #     [
         #         "0.02501786",
@@ -279,7 +279,7 @@ class bitbank(Exchange):
         candlestick = self.safe_value(data, 'candlestick', [])
         first = self.safe_value(candlestick, 0, {})
         ohlcv = self.safe_value(first, 'ohlcv', [])
-        return self.parse_ohlcvs(ohlcv, market)
+        return self.parse_ohlcvs(ohlcv, market, timeframe, since, limit)
 
     async def fetch_balance(self, params={}):
         await self.load_markets()

@@ -167,7 +167,7 @@ module.exports = class theocean extends Exchange {
         return result;
     }
 
-    parseOHLCV (ohlcv, market = undefined, timeframe = '5m', since = undefined, limit = undefined) {
+    parseOHLCV (ohlcv, market = undefined) {
         //
         //     {
         //         "market_id":"ETH-BTC",
@@ -226,7 +226,7 @@ module.exports = class theocean extends Exchange {
         //         }
         //     ]
         //
-        return this.parseOHLCVs (response, market);
+        return this.parseOHLCVs (response, market, timeframe, since, limit);
     }
 
     async fetchBalanceByCode (code, params = {}) {

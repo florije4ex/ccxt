@@ -576,7 +576,7 @@ module.exports = class eterbase extends Exchange {
         return this.parseOrderBook (response, timestamp);
     }
 
-    parseOHLCV (ohlcv, market = undefined, timeframe = '1m', since = undefined, limit = undefined) {
+    parseOHLCV (ohlcv, market = undefined) {
         //
         //     {
         //         "time":1588807500000,
@@ -630,7 +630,7 @@ module.exports = class eterbase extends Exchange {
         //         {"time":1588808400000,"open":0.022044,"high":0.022044,"low":0.022044,"close":0.022044,"volume":3.9615545499999993},
         //     ]
         //
-        return this.parseOHLCVs (response, market);
+        return this.parseOHLCVs (response, market, timeframe, since, limit);
     }
 
     async fetchBalance (params = {}) {

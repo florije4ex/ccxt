@@ -139,6 +139,7 @@ class binance(Exchange):
                         'sub-account/margin/account',
                         'sub-account/margin/accountSummary',
                         'sub-account/status',
+                        'sub-account/transfer/subUserHistory',
                         # lending endpoints
                         'lending/daily/product/list',
                         'lending/daily/userLeftQuota',
@@ -769,7 +770,7 @@ class binance(Exchange):
         response = getattr(self, method)(params)
         return self.parse_tickers(response, symbols)
 
-    def parse_ohlcv(self, ohlcv, market=None, timeframe='1m', since=None, limit=None):
+    def parse_ohlcv(self, ohlcv, market=None):
         #
         #     [
         #         1591478520000,
@@ -815,7 +816,7 @@ class binance(Exchange):
         #         [1591478640000,"0.02500800","0.02501100","0.02500300","0.02500800","154.14200000",1591478699999,"3.85405839",97,"5.32300000","0.13312641","0"],
         #     ]
         #
-        return self.parse_ohlcvs(response, market)
+        return self.parse_ohlcvs(response, market, timeframe, since, limit)
 
     def parse_trade(self, trade, market=None):
         if 'isDustTrade' in trade:
@@ -1159,7 +1160,7 @@ class binance(Exchange):
             test = self.safe_value(params, 'test', False)
             if test:
                 method += 'Test'
-                params = self.omit(params, 'test')
+            params = self.omit(params, 'test')
         uppercaseType = type.upper()
         validOrderTypes = self.safe_value(market['info'], 'orderTypes')
         if not self.in_array(uppercaseType, validOrderTypes):
@@ -1171,42 +1172,75 @@ class binance(Exchange):
         }
         if clientOrderId is not None:
             request['newClientOrderId'] = clientOrderId
-        quoteOrderQty = self.safe_value(self.options, 'quoteOrderQty', False)
-        if uppercaseType == 'MARKET' and quoteOrderQty:
-            quoteOrderQty = self.safe_float(params, 'quoteOrderQty')
-            precision = market['precision']['price']
-            if quoteOrderQty is not None:
-                request['quoteOrderQty'] = self.decimal_to_precision(quoteOrderQty, TRUNCATE, precision, self.precisionMode)
-                params = self.omit(params, 'quoteOrderQty')
-            elif price is not None:
-                request['quoteOrderQty'] = self.decimal_to_precision(amount * price, TRUNCATE, precision, self.precisionMode)
-            else:
-                request['quantity'] = self.amount_to_precision(symbol, amount)
-        else:
-            request['quantity'] = self.amount_to_precision(symbol, amount)
         if market['spot']:
             request['newOrderRespType'] = self.safe_value(self.options['newOrderRespType'], type, 'RESULT')  # 'ACK' for order id, 'RESULT' for full order or 'FULL' for order with fills
+        # additional required fields depending on the order type
         timeInForceIsRequired = False
         priceIsRequired = False
         stopPriceIsRequired = False
-        if uppercaseType == 'LIMIT':
+        quantityIsRequired = False
+        #
+        # spot/margin
+        #
+        #     LIMIT                timeInForce, quantity, price
+        #     MARKET               quantity or quoteOrderQty
+        #     STOP_LOSS            quantity, stopPrice
+        #     STOP_LOSS_LIMIT      timeInForce, quantity, price, stopPrice
+        #     TAKE_PROFIT          quantity, stopPrice
+        #     TAKE_PROFIT_LIMIT    timeInForce, quantity, price, stopPrice
+        #     LIMIT_MAKER          quantity, price
+        #
+        # futures
+        #
+        #     LIMIT                timeInForce, quantity, price
+        #     MARKET               quantity
+        #     STOP/TAKE_PROFIT     quantity, price, stopPrice
+        #     STOP_MARKET          stopPrice
+        #     TAKE_PROFIT_MARKET   stopPrice
+        #     TRAILING_STOP_MARKET callbackRate
+        #
+        if uppercaseType == 'MARKET':
+            quoteOrderQty = self.safe_value(self.options, 'quoteOrderQty', False)
+            if quoteOrderQty:
+                quoteOrderQty = self.safe_float(params, 'quoteOrderQty')
+                precision = market['precision']['price']
+                if quoteOrderQty is not None:
+                    request['quoteOrderQty'] = self.decimal_to_precision(quoteOrderQty, TRUNCATE, precision, self.precisionMode)
+                    params = self.omit(params, 'quoteOrderQty')
+                elif price is not None:
+                    request['quoteOrderQty'] = self.decimal_to_precision(amount * price, TRUNCATE, precision, self.precisionMode)
+                else:
+                    quantityIsRequired = True
+            else:
+                quantityIsRequired = True
+        elif uppercaseType == 'LIMIT':
             priceIsRequired = True
             timeInForceIsRequired = True
+            quantityIsRequired = True
         elif (uppercaseType == 'STOP_LOSS') or (uppercaseType == 'TAKE_PROFIT'):
             stopPriceIsRequired = True
+            quantityIsRequired = True
             if market['future']:
                 priceIsRequired = True
         elif (uppercaseType == 'STOP_LOSS_LIMIT') or (uppercaseType == 'TAKE_PROFIT_LIMIT'):
+            quantityIsRequired = True
             stopPriceIsRequired = True
             priceIsRequired = True
             timeInForceIsRequired = True
         elif uppercaseType == 'LIMIT_MAKER':
             priceIsRequired = True
+            quantityIsRequired = True
         elif uppercaseType == 'STOP':
+            quantityIsRequired = True
             stopPriceIsRequired = True
             priceIsRequired = True
-        elif uppercaseType == 'STOP_MARKET':
+        elif (uppercaseType == 'STOP_MARKET') or (uppercaseType == 'TAKE_PROFIT_MARKET'):
+            closePosition = self.safe_value(params, 'closePosition')
+            if closePosition is None:
+                quantityIsRequired = True
             stopPriceIsRequired = True
+        if quantityIsRequired:
+            request['quantity'] = self.amount_to_precision(symbol, amount)
         if priceIsRequired:
             if price is None:
                 raise InvalidOrder(self.id + ' createOrder method requires a price argument for a ' + type + ' order')
@@ -1355,7 +1389,7 @@ class binance(Exchange):
         defaultType = self.safe_string_2(self.options, 'fetchOpenOrders', 'defaultType', market['type'])
         type = self.safe_string(params, 'type', defaultType)
         # https://github.com/ccxt/ccxt/issues/6507
-        origClientOrderId = self.safe_value(params, 'origClientOrderId')
+        origClientOrderId = self.safe_value_2(params, 'origClientOrderId', 'clientOrderId')
         request = {
             'symbol': market['id'],
             # 'orderId': int(id),
@@ -1370,7 +1404,7 @@ class binance(Exchange):
             method = 'fapiPrivateDeleteOrder'
         elif type == 'margin':
             method = 'sapiDeleteMarginOrder'
-        query = self.omit(params, 'type')
+        query = self.omit(params, ['type', 'origClientOrderId', 'clientOrderId'])
         response = getattr(self, method)(self.extend(request, query))
         return self.parse_order(response)
 
