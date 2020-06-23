@@ -181,6 +181,8 @@ class huobipro(Exchange):
                         'swap-api/v1/swap_cancel',  # 撤销订单
                         'swap-api/v1/swap_hisorders',  # 获取历史订单
                         'swap-api/v1/swap_financial_record',  # 查询用户财务记录
+                        'swap-api/v1/swap_funding_rate',  # 获取合约的资金费率
+                        'swap-api/v1/swap_historical_funding_rate',  # 获取合约的历史资金费率
                     ]
                 },
             },
