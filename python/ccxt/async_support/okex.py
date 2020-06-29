@@ -98,6 +98,11 @@ class okex(Exchange):
                         'time',
                     ],
                 },
+                'system': {
+                    'get': [
+                        'status',
+                    ]
+                },
                 'account': {
                     'get': [
                         'wallet',

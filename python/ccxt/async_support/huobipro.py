@@ -85,6 +85,7 @@ class huobipro(Exchange):
                 'v2Public': {
                     'get': [
                         'reference/currencies',
+                        'market-status',
                     ],
                 },
                 'v2Private': {
@@ -169,6 +170,8 @@ class huobipro(Exchange):
                 'swap': {
                     'get': [
                         'swap-ex/market/depth',  # 获取行情深度数据
+                        'swap-api/v1/swap_api_state',  # 查询系统状态
+                        'swap-api/v1/swap_api_trading_status',  # 获取用户的API指标禁用信息
                     ],
                     'post': [
                         'swap-api/v1/swap_position_info',  # 获取用户持仓信息
