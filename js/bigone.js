@@ -17,16 +17,24 @@ module.exports = class bigone extends Exchange {
             'rateLimit': 1200, // 500 request per 10 minutes
             'has': {
                 'cancelAllOrders': true,
+                'cancelOrder': true,
                 'createMarketOrder': false,
+                'createOrder': true,
+                'fetchBalance': true,
+                'fetchClosedOrders': true,
                 'fetchDepositAddress': true,
                 'fetchDeposits': true,
+                'fetchMarkets': true,
                 'fetchMyTrades': true,
                 'fetchOHLCV': true,
+                'fetchOpenOrders': true,
                 'fetchOrder': true,
                 'fetchOrders': true,
-                'fetchOpenOrders': true,
-                'fetchClosedOrders': true,
+                'fetchOrderBook': true,
+                'fetchTicker': true,
                 'fetchTickers': true,
+                'fetchTime': true,
+                'fetchTrades': true,
                 'fetchWithdrawals': true,
                 'withdraw': true,
             },
@@ -364,6 +372,20 @@ module.exports = class bigone extends Exchange {
             result[symbol] = ticker;
         }
         return result;
+    }
+
+    async fetchTime (params = {}) {
+        const response = await this.publicGetPing (params);
+        //
+        //     {
+        //         "data": {
+        //             "timestamp": 1527665262168391000
+        //         }
+        //     }
+        //
+        const data = this.safeValue (response, 'data', {});
+        const timestamp = this.safeInteger (data, 'timestamp');
+        return parseInt (timestamp / 1000000);
     }
 
     async fetchOrderBook (symbol, limit = undefined, params = {}) {

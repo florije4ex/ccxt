@@ -36,7 +36,7 @@ use Elliptic\EC;
 use Elliptic\EdDSA;
 use BN\BN;
 
-$version = '1.30.55';
+$version = '1.31.62';
 
 // rounding mode
 const TRUNCATE = 0;
@@ -55,7 +55,7 @@ const PAD_WITH_ZERO = 1;
 
 class Exchange {
 
-    const VERSION = '1.30.55';
+    const VERSION = '1.31.62';
 
     private static $base58_alphabet = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
     private static $base58_encoder = null;
@@ -84,6 +84,7 @@ class Exchange {
         'bitmart',
         'bitmax',
         'bitmex',
+        'bitpanda',
         'bitso',
         'bitstamp',
         'bitstamp1',
@@ -96,7 +97,6 @@ class Exchange {
         'btcalpha',
         'btcbox',
         'btcmarkets',
-        'btctradeim',
         'btctradeua',
         'btcturk',
         'buda',
@@ -118,7 +118,6 @@ class Exchange {
         'coinmate',
         'coinone',
         'coinspot',
-        'coolcoin',
         'coss',
         'crex24',
         'currencycom',
@@ -182,6 +181,7 @@ class Exchange {
         'wavesexchange',
         'whitebit',
         'xbtce',
+        'xena',
         'yobit',
         'zaif',
         'zb',

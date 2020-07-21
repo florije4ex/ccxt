@@ -35,7 +35,7 @@ const Exchange  = require ('./js/base/Exchange')
 //-----------------------------------------------------------------------------
 // this is updated by vss.js when building
 
-const version = '1.30.55'
+const version = '1.31.62'
 
 Exchange.ccxtVersion = version
 
@@ -64,6 +64,7 @@ const exchanges = {
     'bitmart':                 require ('./js/bitmart.js'),
     'bitmax':                  require ('./js/bitmax.js'),
     'bitmex':                  require ('./js/bitmex.js'),
+    'bitpanda':                require ('./js/bitpanda.js'),
     'bitso':                   require ('./js/bitso.js'),
     'bitstamp':                require ('./js/bitstamp.js'),
     'bitstamp1':               require ('./js/bitstamp1.js'),
@@ -76,7 +77,6 @@ const exchanges = {
     'btcalpha':                require ('./js/btcalpha.js'),
     'btcbox':                  require ('./js/btcbox.js'),
     'btcmarkets':              require ('./js/btcmarkets.js'),
-    'btctradeim':              require ('./js/btctradeim.js'),
     'btctradeua':              require ('./js/btctradeua.js'),
     'btcturk':                 require ('./js/btcturk.js'),
     'buda':                    require ('./js/buda.js'),
@@ -98,7 +98,6 @@ const exchanges = {
     'coinmate':                require ('./js/coinmate.js'),
     'coinone':                 require ('./js/coinone.js'),
     'coinspot':                require ('./js/coinspot.js'),
-    'coolcoin':                require ('./js/coolcoin.js'),
     'coss':                    require ('./js/coss.js'),
     'crex24':                  require ('./js/crex24.js'),
     'currencycom':             require ('./js/currencycom.js'),
@@ -162,6 +161,7 @@ const exchanges = {
     'wavesexchange':           require ('./js/wavesexchange.js'),
     'whitebit':                require ('./js/whitebit.js'),
     'xbtce':                   require ('./js/xbtce.js'),
+    'xena':                    require ('./js/xena.js'),
     'yobit':                   require ('./js/yobit.js'),
     'zaif':                    require ('./js/zaif.js'),
     'zb':                      require ('./js/zb.js'),    

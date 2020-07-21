@@ -1828,7 +1828,11 @@ class okex(Exchange):
         #         "result":true
         #     }
         #
-        return self.parse_order(response, market)
+        order = self.parse_order(response, market)
+        return self.extend(order, {
+            'type': type,
+            'side': side,
+        })
 
     async def cancel_order(self, id, symbol=None, params={}):
         if symbol is None:
@@ -1976,11 +1980,6 @@ class okex(Exchange):
         type = self.safe_string(order, 'type')
         if (side != 'buy') and (side != 'sell'):
             side = self.parse_order_side(type)
-        if (type != 'limit') and (type != 'market'):
-            if 'pnl' in order:
-                type = 'futures'
-            else:
-                type = 'swap'
         symbol = None
         marketId = self.safe_string(order, 'instrument_id')
         if marketId in self.markets_by_id:
@@ -2019,6 +2018,8 @@ class okex(Exchange):
                 'currency': feeCurrency,
             }
         clientOrderId = self.safe_string(order, 'client_oid')
+        if len(clientOrderId) < 1:
+            clientOrderId = None  # fix empty clientOrderId string
         return {
             'info': order,
             'id': id,

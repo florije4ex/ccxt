@@ -1155,13 +1155,18 @@ class bybit(Exchange):
     def create_order(self, symbol, type, side, amount, price=None, params={}):
         self.load_markets()
         market = self.market(symbol)
+        qty = self.amount_to_precision(symbol, amount)
+        if market['inverse']:
+            qty = int(qty)
+        else:
+            qty = float(qty)
         request = {
             # orders ---------------------------------------------------------
             'side': self.capitalize(side),
             'symbol': market['id'],
             'order_type': self.capitalize(type),
-            'qty': self.amount_to_precision(symbol, amount),  # order quantity in USD, integer only
-            # 'price': self.price_to_precision(symbol, price),  # required for limit orders
+            'qty': qty,  # order quantity in USD, integer only
+            # 'price': float(self.price_to_precision(symbol, price)),  # required for limit orders
             'time_in_force': 'GoodTillCancel',  # ImmediateOrCancel, FillOrKill, PostOnly
             # 'take_profit': 123.45,  # take profit price, only take effect upon opening the position
             # 'stop_loss': 123.45,  # stop loss price, only take effect upon opening the position
@@ -1184,7 +1189,7 @@ class bybit(Exchange):
             priceIsRequired = True
         if priceIsRequired:
             if price is not None:
-                request['price'] = self.price_to_precision(symbol, price)
+                request['price'] = float(self.price_to_precision(symbol, price))
             else:
                 raise ArgumentsRequired(self.id + ' createOrder requires a price argument for a ' + type + ' order')
         stopPx = self.safe_value(params, 'stop_px')
@@ -1197,8 +1202,8 @@ class bybit(Exchange):
                 raise ArgumentsRequired(self.id + ' createOrder requires both the stop_px and base_price params for a conditional ' + type + ' order')
             else:
                 method = 'privateLinearPostStopOrderCreate' if (marketType == 'linear') else 'openapiPostStopOrderCreate'
-                request['stop_px'] = self.price_to_precision(symbol, stopPx)
-                request['base_price'] = self.price_to_precision(symbol, basePrice)
+                request['stop_px'] = float(self.price_to_precision(symbol, stopPx))
+                request['base_price'] = float(self.price_to_precision(symbol, basePrice))
                 params = self.omit(params, ['stop_px', 'base_price'])
         elif basePrice is not None:
             raise ArgumentsRequired(self.id + ' createOrder requires both the stop_px and base_price params for a conditional ' + type + ' order')
@@ -1311,9 +1316,9 @@ class bybit(Exchange):
         else:
             request['order_id'] = id
         if amount is not None:
-            request['p_r_qty'] = self.amount_to_precision(symbol, amount)
+            request['p_r_qty'] = int(self.amount_to_precision(symbol, amount))
         if price is not None:
-            request['p_r_price'] = self.price_to_precision(symbol, price)
+            request['p_r_price'] = float(self.price_to_precision(symbol, price))
         response = getattr(self, method)(self.extend(request, params))
         #
         #     {
@@ -1351,7 +1356,7 @@ class bybit(Exchange):
 
     def cancel_order(self, id, symbol=None, params={}):
         if symbol is None:
-            raise ArgumentsRequired(self.id + ' fetchOrder requires a symbol argument')
+            raise ArgumentsRequired(self.id + ' cancelOrder requires a symbol argument')
         self.load_markets()
         market = self.market(symbol)
         request = {

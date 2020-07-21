@@ -27,16 +27,24 @@ class bigone(Exchange):
             'rateLimit': 1200,  # 500 request per 10 minutes
             'has': {
                 'cancelAllOrders': True,
+                'cancelOrder': True,
                 'createMarketOrder': False,
+                'createOrder': True,
+                'fetchBalance': True,
+                'fetchClosedOrders': True,
                 'fetchDepositAddress': True,
                 'fetchDeposits': True,
+                'fetchMarkets': True,
                 'fetchMyTrades': True,
                 'fetchOHLCV': True,
+                'fetchOpenOrders': True,
                 'fetchOrder': True,
                 'fetchOrders': True,
-                'fetchOpenOrders': True,
-                'fetchClosedOrders': True,
+                'fetchOrderBook': True,
+                'fetchTicker': True,
                 'fetchTickers': True,
+                'fetchTime': True,
+                'fetchTrades': True,
                 'fetchWithdrawals': True,
                 'withdraw': True,
             },
@@ -360,6 +368,19 @@ class bigone(Exchange):
             symbol = ticker['symbol']
             result[symbol] = ticker
         return result
+
+    async def fetch_time(self, params={}):
+        response = await self.publicGetPing(params)
+        #
+        #     {
+        #         "data": {
+        #             "timestamp": 1527665262168391000
+        #         }
+        #     }
+        #
+        data = self.safe_value(response, 'data', {})
+        timestamp = self.safe_integer(data, 'timestamp')
+        return int(timestamp / 1000000)
 
     async def fetch_order_book(self, symbol, limit=None, params={}):
         await self.load_markets()
