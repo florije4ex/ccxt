@@ -89,7 +89,7 @@ class okex(Exchange):
                 'fees': 'https://www.okex.com/pages/products/fees.html',
                 'referral': 'https://www.okex.com/join/1888677',
                 'test': {
-                    'rest': 'https://testnet.okex.com',
+                    'rest': 'https://www.okex.com',
                 },
             },
             'api': {
@@ -1613,6 +1613,40 @@ class okex(Exchange):
             result[symbol] = account
         return self.parse_balance(result)
 
+    def parse_option_balance(self, response):
+        """
+        {
+          "underlying": "MNBTC-USD",
+          "equity": "0.99937457",
+          "total_avail_balance": "0.9978",
+          "margin_balance": "0.9978",
+          "avail_margin": "0.9978",
+          "margin_for_unfilled": "0",
+          "margin_frozen": "0",
+          "maintenance_margin": "0",
+          "realized_pnl": "0",
+          "unrealized_pnl": "-0.00012211",
+          "max_withdraw": "0",
+          "option_value": "0.00157457",
+          "delta": "0.0482850397",
+          "vega": "0.0000292039",
+          "gamma": "0.9329557376",
+          "theta": "-0.0004146189",
+          "risk_factor": "1",
+          "margin_multiplier": "1",
+          "account_status": "0",
+          "currency": "MNBTC"
+        }
+        :param response:
+        :return:
+        """
+        result = {'info': response}
+        result [response['currency']] = {
+            'total': self.safe_float(response, 'equity'),
+            'free': self.safe_float(response, 'total_avail_balance'),
+        }
+        return self.parse_balance(result)
+
     def fetch_balance(self, params={}):
         defaultType = self.safe_string_2(self.options, 'fetchBalance', 'defaultType')
         type = self.safe_string(params, 'type', defaultType)
@@ -1622,6 +1656,9 @@ class okex(Exchange):
         suffix = 'Wallet' if (type == 'account') else 'Accounts'
         method = type + 'Get' + suffix
         query = self.omit(params, 'type')
+        if type == 'option':
+            method += 'Underlying'
+            query['underlying'] = params['underlying']
         response = getattr(self, method)(query)
         #
         # account
@@ -1759,6 +1796,8 @@ class okex(Exchange):
             return self.parse_futures_balance(response)
         elif type == 'swap':
             return self.parse_swap_balance(response)
+        elif type == 'option':
+            return self.parse_option_balance(response)
         raise NotSupported(self.id + " fetchBalance does not support the '" + type + "' type(the type must be one of 'account', 'spot', 'margin', 'futures', 'swap')")
 
     def create_order(self, symbol, type, side, amount, price=None, params={}):
@@ -1784,6 +1823,14 @@ class okex(Exchange):
             })
             if market['futures']:
                 request['leverage'] = '10'  # or '20'
+            method = market['type'] + 'PostOrder'
+        elif market['option']:
+            request = self.extend(request, {
+                'side': side,
+                'price': price,
+                'size': amount,
+                'match_price': 1 if type == 'market' else 0,
+            })
             method = market['type'] + 'PostOrder'
         else:
             marginTrading = self.safe_string(params, 'margin_trading', '1')  # 1 = spot, 2 = margin
@@ -1844,6 +1891,9 @@ class okex(Exchange):
         }
         if market['futures'] or market['swap']:
             method += 'InstrumentId'
+        elif market['option']:
+            method += 'Underlying'
+            request['underlying'] = market['info']['underlying']
         else:
             method += 's'
         clientOrderId = self.safe_string_2(params, 'client_oid', 'clientOrderId')
@@ -1889,6 +1939,7 @@ class okex(Exchange):
             '2': 'closed',
             '3': 'open',
             '4': 'canceled',
+            '5': 'modifing',
         }
         return self.safe_string(statuses, status, status)
 
@@ -2045,13 +2096,21 @@ class okex(Exchange):
         type = self.safe_string(params, 'type', defaultType)
         if type is None:
             raise ArgumentsRequired(self.id + " fetchOrder requires a type parameter(one of 'spot', 'margin', 'futures', 'swap').")
-        instrumentId = 'InstrumentId' if (market['futures'] or market['swap']) else ''
+        if (market['futures'] or market['swap']):
+            instrumentId = 'InstrumentId'
+        elif market['option']:
+            instrumentId = 'Underlying'
+        else:
+            instrumentId = ''
         method = type + 'GetOrders' + instrumentId
-        request = {
-            'instrument_id': market['id'],
-            # 'client_oid': 'abcdef12345',  # optional, [a-z0-9]{1,32}
-            # 'order_id': id,
-        }
+        if market['option']:
+            request = {'underlying': market['info']['underlying']}
+        else:
+            request = {
+                'instrument_id': market['id'],
+                # 'client_oid': 'abcdef12345',  # optional, [a-z0-9]{1,32}
+                # 'order_id': id,
+            }
         clientOid = self.safe_string(params, 'client_oid')
         if clientOid is not None:
             method += 'ClientOid'
