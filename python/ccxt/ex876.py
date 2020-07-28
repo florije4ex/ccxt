@@ -125,10 +125,12 @@ class ex876(Exchange):
         return response
 
     def cancel_order(self, id, symbol=None, params={}):
-        pass
+        response = self.private_post_spots_orders_orderid_cancel({'orderId': id})
+        return response
 
     def fetch_order(self, id, symbol=None, params={}):
-        pass
+        response = self.private_get_spots_orders_orderid({'orderId': id})
+        return response
 
     def sign(self, path, api='public', method='GET', params={}, headers=None, body=None):
         host = self.urls['api'][api]
