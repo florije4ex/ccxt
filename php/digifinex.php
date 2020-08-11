@@ -32,6 +32,7 @@ class digifinex extends Exchange {
                 'fetchOrder' => true,
                 'fetchOrderBook' => true,
                 'fetchOrders' => true,
+                'fetchStatus' => true,
                 'fetchTicker' => true,
                 'fetchTickers' => true,
                 'fetchTime' => true,
@@ -559,7 +560,7 @@ class digifinex extends Exchange {
         $marketId = $this->safe_string($trade, 'symbol');
         if ($marketId !== null) {
             if (is_array($this->markets_by_id) && array_key_exists($marketId, $this->markets_by_id)) {
-                $market = $this->markets_by_id[$market];
+                $market = $this->markets_by_id[$marketId];
                 $symbol = $market['symbol'];
             } else {
                 list($baseId, $quoteId) = explode('_', $marketId);
@@ -610,6 +611,21 @@ class digifinex extends Exchange {
         //     }
         //
         return $this->safe_timestamp($response, 'server_time');
+    }
+
+    public function fetch_status($params = array ()) {
+        $this->publicGetPing ($params);
+        //
+        //     {
+        //         "msg" => "pong",
+        //         "code" => 0
+        //     }
+        //
+        $this->status = array_merge($this->status, array(
+            'status' => 'ok',
+            'updated' => $this->milliseconds(),
+        ));
+        return $this->status;
     }
 
     public function fetch_trades($symbol, $since = null, $limit = null, $params = array ()) {

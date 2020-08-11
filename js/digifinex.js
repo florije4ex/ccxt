@@ -28,6 +28,7 @@ module.exports = class digifinex extends Exchange {
                 'fetchOrder': true,
                 'fetchOrderBook': true,
                 'fetchOrders': true,
+                'fetchStatus': true,
                 'fetchTicker': true,
                 'fetchTickers': true,
                 'fetchTime': true,
@@ -555,7 +556,7 @@ module.exports = class digifinex extends Exchange {
         const marketId = this.safeString (trade, 'symbol');
         if (marketId !== undefined) {
             if (marketId in this.markets_by_id) {
-                market = this.markets_by_id[market];
+                market = this.markets_by_id[marketId];
                 symbol = market['symbol'];
             } else {
                 const [ baseId, quoteId ] = marketId.split ('_');
@@ -606,6 +607,21 @@ module.exports = class digifinex extends Exchange {
         //     }
         //
         return this.safeTimestamp (response, 'server_time');
+    }
+
+    async fetchStatus (params = {}) {
+        await this.publicGetPing (params);
+        //
+        //     {
+        //         "msg": "pong",
+        //         "code": 0
+        //     }
+        //
+        this.status = this.extend (this.status, {
+            'status': 'ok',
+            'updated': this.milliseconds (),
+        });
+        return this.status;
     }
 
     async fetchTrades (symbol, since = undefined, limit = undefined, params = {}) {
