@@ -179,6 +179,7 @@ class huobipro(Exchange):
                 'swap': {
                     'get': [
                         'swap-ex/market/depth',  # 获取行情深度数据
+                        'swap-ex/market/trade',  # 获取市场最近成交记录
                         'swap-api/v1/swap_funding_rate',  # 获取合约的资金费率
                         'swap-api/v1/swap_historical_funding_rate',  # 获取合约的历史资金费率
                     ],
