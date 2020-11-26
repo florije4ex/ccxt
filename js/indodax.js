@@ -95,6 +95,13 @@ module.exports = class indodax extends Exchange {
                 'timeDifference': 0, // the difference between system clock and exchange clock
                 'adjustForTimeDifference': false, // controls the adjustment logic upon instantiation
             },
+            'commonCurrencies': {
+                'STR': 'XLM',
+                'BCHABC': 'BCH',
+                'BCHSV': 'BSV',
+                'DRK': 'DASH',
+                'NEM': 'XEM',
+            },
         });
     }
 
@@ -151,7 +158,7 @@ module.exports = class indodax extends Exchange {
         const result = [];
         for (let i = 0; i < response.length; i++) {
             const market = response[i];
-            const id = this.safeString (market, 'id');
+            const id = this.safeString (market, 'ticker_id');
             const baseId = this.safeString (market, 'traded_currency');
             const quoteId = this.safeString (market, 'base_currency');
             const base = this.safeCurrencyCode (baseId);
@@ -319,6 +326,15 @@ module.exports = class indodax extends Exchange {
         return this.parseTrades (response, market, since, limit);
     }
 
+    parseOrderStatus (status) {
+        const statuses = {
+            'open': 'open',
+            'filled': 'closed',
+            'cancelled': 'canceled',
+        };
+        return this.safeString (statuses, status, status);
+    }
+
     parseOrder (order, market = undefined) {
         //
         //     {
@@ -334,12 +350,7 @@ module.exports = class indodax extends Exchange {
         if ('type' in order) {
             side = order['type'];
         }
-        let status = this.safeString (order, 'status', 'open');
-        if (status === 'filled') {
-            status = 'closed';
-        } else if (status === 'cancelled') {
-            status = 'canceled';
-        }
+        const status = this.parseOrderStatus (this.safeString (order, 'status', 'open'));
         let symbol = undefined;
         let cost = undefined;
         const price = this.safeFloat (order, 'price');
@@ -387,6 +398,7 @@ module.exports = class indodax extends Exchange {
             'lastTradeTimestamp': undefined,
             'symbol': symbol,
             'type': 'limit',
+            'timeInForce': undefined,
             'side': side,
             'price': price,
             'cost': cost,
@@ -459,12 +471,9 @@ module.exports = class indodax extends Exchange {
             request['pair'] = market['id'];
         }
         const response = await this.privatePostOrderHistory (this.extend (request, params));
-        let orders = this.parseOrders (response['return']['orders'], market, since, limit);
+        let orders = this.parseOrders (response['return']['orders'], market);
         orders = this.filterBy (orders, 'status', 'closed');
-        if (symbol !== undefined) {
-            return this.filterBySymbol (orders, symbol);
-        }
-        return orders;
+        return this.filterBySymbolSinceLimit (orders, symbol, since, limit);
     }
 
     async createOrder (symbol, type, side, amount, price = undefined, params = {}) {
@@ -486,9 +495,11 @@ module.exports = class indodax extends Exchange {
         }
         request[currency] = amount;
         const result = await this.privatePostTrade (this.extend (request, params));
+        const data = this.safeValue (result, 'return', {});
+        const id = this.safeString (data, 'order_id');
         return {
             'info': result,
-            'id': result['return']['order_id'].toString (),
+            'id': id,
         };
     }
 

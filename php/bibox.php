@@ -19,6 +19,7 @@ class bibox extends Exchange {
             'name' => 'Bibox',
             'countries' => array( 'CN', 'US', 'KR' ),
             'version' => 'v1',
+            'hostname' => 'bibox365.com',
             'has' => array(
                 'cancelOrder' => true,
                 'CORS' => false,
@@ -58,13 +59,13 @@ class bibox extends Exchange {
             ),
             'urls' => array(
                 'logo' => 'https://user-images.githubusercontent.com/51840849/77257418-3262b000-6c85-11ea-8fb8-20bdf20b3592.jpg',
-                'api' => 'https://api.bibox.com',
-                'www' => 'https://www.bibox.com',
+                'api' => 'https://api.{hostname}',
+                'www' => 'https://www.bibox365.com',
                 'doc' => array(
                     'https://biboxcom.github.io/en/',
                 ),
                 'fees' => 'https://bibox.zendesk.com/hc/en-us/articles/360002336133',
-                'referral' => 'https://w2.bibox.com/login/register?invite_code=05Kj3I',
+                'referral' => 'https://w2.bibox365.com/login/register?invite_code=05Kj3I',
             ),
             'api' => array(
                 'public' => array(
@@ -123,6 +124,8 @@ class bibox extends Exchange {
                 '4003' => '\\ccxt\\DDoSProtection', // server busy please try again later
             ),
             'commonCurrencies' => array(
+                'BOX' => 'DefiBox',
+                'BPT' => 'BlockPool Token',
                 'KEY' => 'Bihu',
                 'MTC' => 'MTC Mesh Network', // conflict with MTC Docademic doc.com Token https://github.com/ccxt/ccxt/issues/6081 https://github.com/ccxt/ccxt/issues/3025
                 'PAI' => 'PCHAIN',
@@ -229,7 +232,7 @@ class bibox extends Exchange {
         $percentage = $this->safe_string($ticker, 'percent');
         if ($percentage !== null) {
             $percentage = str_replace('%', '', $percentage);
-            $percentage = floatval ($percentage);
+            $percentage = floatval($percentage);
         }
         return array(
             'symbol' => $symbol,
@@ -283,7 +286,8 @@ class bibox extends Exchange {
         );
         $response = $this->publicGetMdata (array_merge($request, $params));
         $tickers = $this->parse_tickers($response['result'], $symbols);
-        return $this->index_by($tickers, 'symbol');
+        $result = $this->index_by($tickers, 'symbol');
+        return $this->filter_by_array($result, 'symbol', $symbols);
     }
 
     public function parse_trade($trade, $market = null) {
@@ -326,7 +330,7 @@ class bibox extends Exchange {
         }
         if ($feeCost !== null) {
             $fee = array(
-                'cost' => $feeCost,
+                'cost' => -$feeCost,
                 'currency' => $feeCurrency,
                 'rate' => $feeRate,
             );
@@ -432,6 +436,52 @@ class bibox extends Exchange {
             'body' => array(),
         );
         $response = $this->privatePostTransfer (array_merge($request, $params));
+        //
+        //     {
+        //         "$result":[
+        //             {
+        //                 "$result":[
+        //                     array(
+        //                         "totalBalance":"14.57582269",
+        //                         "balance":"14.57582269",
+        //                         "freeze":"0.00000000",
+        //                         "$id":60,
+        //                         "symbol":"USDT",
+        //                         "icon_url":"/appimg/USDT_icon.png",
+        //                         "describe_url":"[array(\"lang\":\"zh-cn\",\"link\":\"https://bibox.zendesk.com/hc/zh-cn/articles/115004798234\"),array(\"lang\":\"en-ww\",\"link\":\"https://bibox.zendesk.com/hc/en-us/articles/115004798234\")]",
+        //                         "$name":"USDT",
+        //                         "enable_withdraw":1,
+        //                         "enable_deposit":1,
+        //                         "enable_transfer":1,
+        //                         "confirm_count":2,
+        //                         "is_erc20":1,
+        //                         "forbid_info":null,
+        //                         "describe_summary":"[array(\"lang\":\"zh-cn\",\"text\":\"USDT 是 Tether 公司推出的基于稳定价值货币美元（USD）的代币 Tether USD（简称USDT），1USDT=1美元，用户可以随时使用 USDT 与 USD 进行1:1的兑换。\"),array(\"lang\":\"en-ww\",\"text\":\"USDT is a cryptocurrency asset issued on the Bitcoin blockchain via the Omni Layer Protocol. Each USDT unit is backed by a U.S Dollar held in the reserves of the Tether Limited and can be redeemed through the Tether Platform.\")]",
+        //                         "total_amount":4776930644,
+        //                         "supply_amount":4642367414,
+        //                         "price":"--",
+        //                         "contract_father":"OMNI",
+        //                         "supply_time":"--",
+        //                         "comment":null,
+        //                         "contract":"31",
+        //                         "original_decimals":8,
+        //                         "deposit_type":0,
+        //                         "hasCobo":0,
+        //                         "BTCValue":"0.00126358",
+        //                         "CNYValue":"100.93381445",
+        //                         "USDValue":"14.57524654",
+        //                         "children":array(
+        //                             array("type":"OMNI","symbol":"USDT","enable_deposit":1,"enable_withdraw":1,"confirm_count":2),
+        //                             array("type":"TRC20","symbol":"tUSDT","enable_deposit":1,"enable_withdraw":1,"confirm_count":20),
+        //                             array("type":"ERC20","symbol":"eUSDT","enable_deposit":1,"enable_withdraw":1,"confirm_count":25)
+        //                         )
+        //                     ),
+        //                 ],
+        //                 "cmd":"transfer/coinList"
+        //             }
+        //         ]
+        //     }
+        //
         $currencies = $this->safe_value($response, 'result');
         $result = array();
         for ($i = 0; $i < count($currencies); $i++) {
@@ -506,7 +556,7 @@ class bibox extends Exchange {
             $account = $this->account();
             $balance = $indexed[$id];
             if (gettype($balance) === 'string') {
-                $balance = floatval ($balance);
+                $balance = floatval($balance);
                 $account['free'] = $balance;
                 $account['used'] = 0.0;
                 $account['total'] = $balance;
@@ -743,7 +793,7 @@ class bibox extends Exchange {
                 'currency' => null,
             );
         }
-        $cost = $cost ? $cost : (floatval ($price) * $filled);
+        $cost = $cost ? $cost : (floatval($price) * $filled);
         return array(
             'info' => $order,
             'id' => $id,
@@ -753,6 +803,7 @@ class bibox extends Exchange {
             'lastTradeTimestamp' => null,
             'symbol' => $symbol,
             'type' => $type,
+            'timeInForce' => null,
             'side' => $side,
             'price' => $price,
             'amount' => $amount,
@@ -941,7 +992,7 @@ class bibox extends Exchange {
     }
 
     public function sign($path, $api = 'public', $method = 'GET', $params = array (), $headers = null, $body = null) {
-        $url = $this->urls['api'] . '/' . $this->version . '/' . $path;
+        $url = $this->implode_params($this->urls['api'], array( 'hostname' => $this->hostname )) . '/' . $this->version . '/' . $path;
         $cmds = $this->json(array( $params ));
         if ($api === 'public') {
             if ($method !== 'GET') {

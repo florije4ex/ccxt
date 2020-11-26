@@ -199,7 +199,7 @@ The contents of the repository are structured as follows:
 /php/                      # PHP ccxt module/package folder
 /python/                   # Python ccxt module/package folder for PyPI
 /python/__init__.py        # entry point for the Python version of the ccxt.library
-/python/async/__init__.py  # asynchronous version of the ccxt.library for Python 3.5.3+ asyncio
+/python/async_support/     # asynchronous version of the ccxt.library for Python 3.5.3+ asyncio
 /python/base/              # base code for the Python version of the ccxt library
 /python/MANIFEST.in        # a PyPI-package file listing extra package files (license, configs, etc...)
 /python/README.md          # a copy of README.md for PyPI
@@ -212,7 +212,7 @@ The contents of the repository are structured as follows:
 /examples/py               # ...
 /exchanges.cfg             # custom bundle config for including only the exchanges you need
 /package.json              # npm package file, also used in setup.py for version single-sourcing
-/run-tests.js              # a front-end to run invididual tests of all exchanges in all languages (JS/PHP/Python)
+/run-tests.js              # a front-end to run individual tests of all exchanges in all languages (JS/PHP/Python)
 /wiki/                     # the source of all docs (edits go here)
 ```
 
@@ -281,7 +281,7 @@ Below are key notes on how to keep the JS code transpileable.
 Use the linter `npm run lint js/your-exchange-implementation.js` before you build. It will cover many (but not all) the issues,
 so manual checking will still be required if transpilation fails.
 
-If you see a `[TypeError] Cannot read property '1' of null` exception or any other transpilation error when you `npm run build`, check if your code satisifes the following rules:
+If you see a `[TypeError] Cannot read property '1' of null` exception or any other transpilation error when you `npm run build`, check if your code satisfies the following rules:
 
 - don't put empty lines inside your methods
 - always use Python-style indentation, it is preserved as is for all languages
@@ -295,7 +295,7 @@ If the transpiling process finishes successfully, but generates incorrect Python
 - every opening bracket like `(` or `{` should have a space before it!
 - do not use language-specific code syntax sugar, even if you really want to
 - unfold all maps and comprehensions to basic for-loops
-- don't change the arguments of overrided inherited methods, keep them uniform across all exchanges
+- don't change the arguments of overridden inherited methods, keep them uniform across all exchanges
 - do everything with base class methods only (for example, use `this.json ()` for converting objects to json).
 - always put a semicolon `;` at the end of each statement, as in PHP/C-style
 - all associative keys must be single-quoted strings everywhere, `array['good'], array.bad`
@@ -424,27 +424,14 @@ In order to handle the market-`id` properly it has to be looked-up in the info c
 
 ```JavaScript
 parseTrade (trade, market = undefined) {
-   let symbol = undefined;
-   const marketId = this.safeString (trade, 'pair');
-   if (marketId !== undefined) {
-      if (marketId in this.markets_by_id) {
-         // look up by an exchange-specific id in the preloaded markets first
-         market = this.markets_by_id[market];
-         symbol = market['symbol'];
-      } else {
-         // try to parse it somehow, if the format is known
-         const [ baseId, quoteId ] = marketId.split ('/');
-         const base = this.safeCurrencyCode (baseId); // unified
-         const quote = this.safeCurrencyCode (quoteId);
-         symbol = base + '/' + quote;
-      }
-   }
-   // parsing code...
-   return {
-      'info': trade,
-      'symbol': symbol, // very good, a unified symbol here now
-      // other fields...
-   };
+    const marketId = this.safeString (trade, 'pair');
+    // safeSymbol is used to parse the market id to a unified symbol
+    const symbol = this.safeSymbol (marketId, market);
+    return {
+       'info': trade,
+       'symbol': symbol, // very good, a unified symbol here now
+       // other fields...
+    };
 }
 ```
 
@@ -459,7 +446,7 @@ Both work almost identically, and one is implicitly converted to another upon ex
 
 While the above does work in JavaScript, it will not work in Python or PHP. In most languages, associative dictionary keys are not treated in the same way as properties. Therefore, in Python `object.key` is not the same as `object['key']`. In PHP `$object->key` is not the same as `$object['key']` as well. Languages that differentiate between associative keys and properties use different notations for the two.
 
-To keep the code transpileable, please, remeber this simple rule: *always use the single-quoted string key notation `object['key']` for accessing all associative dictionary keys in all languages everywhere throughout this library!*
+To keep the code transpileable, please, remember this simple rule: *always use the single-quoted string key notation `object['key']` for accessing all associative dictionary keys in all languages everywhere throughout this library!*
 
 #### Sanitizing Input With `safe`-Methods
 
@@ -587,7 +574,7 @@ The `hmac()` method also supports `'base64'` for the `digest` argument. This is 
 
 **All timestamps throughout all unified structures within this library are integer timestamp _in milliseconds_!**
 
-In order to convert to milliseconds timestamps, CCXT implementes the following methods:
+In order to convert to milliseconds timestamps, CCXT implements the following methods:
 
 ```JavaScript
 const data = {

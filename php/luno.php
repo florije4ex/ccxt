@@ -181,6 +181,14 @@ class luno extends Exchange {
         return $this->parse_order_book($response, $timestamp, 'bids', 'asks', 'price', 'volume');
     }
 
+    public function parse_order_status($status) {
+        $statuses = array(
+            // todo add other $statuses
+            'PENDING' => 'open',
+        );
+        return $this->safe_string($statuses, $status, $status);
+    }
+
     public function parse_order($order, $market = null) {
         //
         //     {
@@ -200,16 +208,11 @@ class luno extends Exchange {
         //     }
         //
         $timestamp = $this->safe_integer($order, 'creation_timestamp');
-        $status = ($order['state'] === 'PENDING') ? 'open' : 'closed';
+        $status = $this->parse_order_status($this->safe_string($order, 'state'));
+        $status = ($status === 'open') ? $status : $status;
         $side = ($order['type'] === 'ASK') ? 'sell' : 'buy';
         $marketId = $this->safe_string($order, 'pair');
-        $symbol = null;
-        if (is_array($this->markets_by_id) && array_key_exists($marketId, $this->markets_by_id)) {
-            $market = $this->markets_by_id[$marketId];
-        }
-        if ($market !== null) {
-            $symbol = $market['symbol'];
-        }
+        $symbol = $this->safe_symbol($marketId, $market);
         $price = $this->safe_float($order, 'limit_price');
         $amount = $this->safe_float($order, 'limit_volume');
         $quoteFee = $this->safe_float($order, 'fee_counter');
@@ -244,6 +247,7 @@ class luno extends Exchange {
             'status' => $status,
             'symbol' => $symbol,
             'type' => null,
+            'timeInForce' => null,
             'side' => $side,
             'price' => $price,
             'amount' => $amount,
@@ -333,12 +337,12 @@ class luno extends Exchange {
         $result = array();
         for ($i = 0; $i < count($ids); $i++) {
             $id = $ids[$i];
-            $market = $this->markets_by_id[$id];
+            $market = $this->safe_market($id);
             $symbol = $market['symbol'];
             $ticker = $tickers[$id];
             $result[$symbol] = $this->parse_ticker($ticker, $market);
         }
-        return $result;
+        return $this->filter_by_array($result, 'symbol', $symbols);
     }
 
     public function fetch_ticker($symbol, $params = array ()) {
@@ -634,9 +638,10 @@ class luno extends Exchange {
         }
         if ($api === 'private') {
             $this->check_required_credentials();
-            $auth = $this->encode($this->apiKey . ':' . $this->secret);
-            $auth = base64_encode($auth);
-            $headers = array( 'Authorization' => 'Basic ' . $this->decode($auth) );
+            $auth = base64_encode($this->apiKey . ':' . $this->secret);
+            $headers = array(
+                'Authorization' => 'Basic ' . $this->decode($auth),
+            );
         }
         return array( 'url' => $url, 'method' => $method, 'body' => $body, 'headers' => $headers );
     }

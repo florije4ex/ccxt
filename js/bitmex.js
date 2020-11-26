@@ -166,6 +166,7 @@ module.exports = class bitmex extends Exchange {
                     'overloaded': ExchangeNotAvailable,
                     'Account has insufficient Available Balance': InsufficientFunds,
                     'Service unavailable': ExchangeNotAvailable, // {"error":{"message":"Service unavailable","name":"HTTPError"}}
+                    'Server Error': ExchangeError, // {"error":{"message":"Server Error","name":"HTTPError"}}
                 },
             },
             'precisionMode': TICK_SIZE,
@@ -838,7 +839,7 @@ module.exports = class bitmex extends Exchange {
                 result[symbol] = ticker;
             }
         }
-        return result;
+        return this.filterByArray (result, 'symbol', symbols);
     }
 
     parseTicker (ticker, market = undefined) {
@@ -1142,7 +1143,7 @@ module.exports = class bitmex extends Exchange {
         //     }
         //
         const timestamp = this.parse8601 (this.safeString (trade, 'timestamp'));
-        const price = this.safeFloat (trade, 'price');
+        const price = this.safeFloat2 (trade, 'avgPx', 'price');
         const amount = this.safeFloat2 (trade, 'size', 'lastQty');
         const id = this.safeString (trade, 'trdMatchID');
         const order = this.safeString (trade, 'orderID');
@@ -1169,16 +1170,8 @@ module.exports = class bitmex extends Exchange {
         if (fee !== undefined) {
             takerOrMaker = (fee['cost'] < 0) ? 'maker' : 'taker';
         }
-        let symbol = undefined;
         const marketId = this.safeString (trade, 'symbol');
-        if (marketId !== undefined) {
-            if (marketId in this.markets_by_id) {
-                market = this.markets_by_id[marketId];
-                symbol = market['symbol'];
-            } else {
-                symbol = marketId;
-            }
-        }
+        const symbol = this.safeSymbol (marketId, market);
         const type = this.safeStringLower (trade, 'ordType');
         return {
             'info': trade,
@@ -1215,18 +1208,20 @@ module.exports = class bitmex extends Exchange {
         return this.safeString (statuses, status, status);
     }
 
+    parseTimeInForce (timeInForce) {
+        const timeInForces = {
+            'Day': 'Day',
+            'GoodTillCancel': 'GTC',
+            'ImmediateOrCancel': 'IOC',
+            'FillOrKill': 'FOK',
+        };
+        return this.safeString (timeInForces, timeInForce, timeInForce);
+    }
+
     parseOrder (order, market = undefined) {
         const status = this.parseOrderStatus (this.safeString (order, 'ordStatus'));
-        let symbol = undefined;
-        if (market !== undefined) {
-            symbol = market['symbol'];
-        } else {
-            const marketId = this.safeString (order, 'symbol');
-            if (marketId in this.markets_by_id) {
-                market = this.markets_by_id[marketId];
-                symbol = market['symbol'];
-            }
-        }
+        const marketId = this.safeString (order, 'symbol');
+        const symbol = this.safeSymbol (marketId, market);
         const timestamp = this.parse8601 (this.safeString (order, 'timestamp'));
         const lastTradeTimestamp = this.parse8601 (this.safeString (order, 'transactTime'));
         const price = this.safeFloat (order, 'price');
@@ -1251,6 +1246,7 @@ module.exports = class bitmex extends Exchange {
         const type = this.safeStringLower (order, 'ordType');
         const side = this.safeStringLower (order, 'side');
         const clientOrderId = this.safeString (order, 'clOrdID');
+        const timeInForce = this.parseTimeInForce (this.safeString (order, 'timeInForce'));
         return {
             'info': order,
             'id': id,
@@ -1260,6 +1256,7 @@ module.exports = class bitmex extends Exchange {
             'lastTradeTimestamp': lastTradeTimestamp,
             'symbol': symbol,
             'type': type,
+            'timeInForce': timeInForce,
             'side': side,
             'price': price,
             'amount': amount,
@@ -1322,14 +1319,20 @@ module.exports = class bitmex extends Exchange {
 
     async createOrder (symbol, type, side, amount, price = undefined, params = {}) {
         await this.loadMarkets ();
+        const market = this.market (symbol);
+        const orderType = this.capitalize (type);
         const request = {
-            'symbol': this.marketId (symbol),
+            'symbol': market['id'],
             'side': this.capitalize (side),
             'orderQty': amount,
-            'ordType': this.capitalize (type),
+            'ordType': orderType,
         };
         if (price !== undefined) {
-            request['price'] = price;
+            if (orderType === 'Stop') {
+                request['stopPx'] = price;
+            } else {
+                request['price'] = price;
+            }
         }
         const clientOrderId = this.safeString2 (params, 'clOrdID', 'clientOrderId');
         if (clientOrderId !== undefined) {
@@ -1337,10 +1340,7 @@ module.exports = class bitmex extends Exchange {
             params = this.omit (params, [ 'clOrdID', 'clientOrderId' ]);
         }
         const response = await this.privatePostOrder (this.extend (request, params));
-        const order = this.parseOrder (response);
-        const id = this.safeString (order, 'id');
-        this.orders[id] = order;
-        return this.extend ({ 'info': response }, order);
+        return this.parseOrder (response, market);
     }
 
     async editOrder (id, symbol, type, side, amount = undefined, price = undefined, params = {}) {
@@ -1364,9 +1364,7 @@ module.exports = class bitmex extends Exchange {
             request['price'] = price;
         }
         const response = await this.privatePutOrder (this.extend (request, params));
-        const order = this.parseOrder (response);
-        this.orders[order['id']] = order;
-        return this.extend ({ 'info': response }, order);
+        return this.parseOrder (response);
     }
 
     async cancelOrder (id, symbol = undefined, params = {}) {
@@ -1381,16 +1379,14 @@ module.exports = class bitmex extends Exchange {
             params = this.omit (params, [ 'clOrdID', 'clientOrderId' ]);
         }
         const response = await this.privateDeleteOrder (this.extend (request, params));
-        let order = this.safeValue (response, 0, {});
+        const order = this.safeValue (response, 0, {});
         const error = this.safeString (order, 'error');
         if (error !== undefined) {
             if (error.indexOf ('Unable to cancel order due to existing state') >= 0) {
                 throw new OrderNotFound (this.id + ' cancelOrder() failed: ' + error);
             }
         }
-        order = this.parseOrder (order);
-        this.orders[order['id']] = order;
-        return this.extend ({ 'info': response }, order);
+        return this.parseOrder (order);
     }
 
     async cancelAllOrders (symbol = undefined, params = {}) {
@@ -1444,6 +1440,109 @@ module.exports = class bitmex extends Exchange {
         return this.parseOrders (response, market);
     }
 
+    async fetchPositions (symbols = undefined, since = undefined, limit = undefined, params = {}) {
+        await this.loadMarkets ();
+        const response = await this.privateGetPosition (params);
+        //     [
+        //         {
+        //             "account": 0,
+        //             "symbol": "string",
+        //             "currency": "string",
+        //             "underlying": "string",
+        //             "quoteCurrency": "string",
+        //             "commission": 0,
+        //             "initMarginReq": 0,
+        //             "maintMarginReq": 0,
+        //             "riskLimit": 0,
+        //             "leverage": 0,
+        //             "crossMargin": true,
+        //             "deleveragePercentile": 0,
+        //             "rebalancedPnl": 0,
+        //             "prevRealisedPnl": 0,
+        //             "prevUnrealisedPnl": 0,
+        //             "prevClosePrice": 0,
+        //             "openingTimestamp": "2020-11-09T06:53:59.892Z",
+        //             "openingQty": 0,
+        //             "openingCost": 0,
+        //             "openingComm": 0,
+        //             "openOrderBuyQty": 0,
+        //             "openOrderBuyCost": 0,
+        //             "openOrderBuyPremium": 0,
+        //             "openOrderSellQty": 0,
+        //             "openOrderSellCost": 0,
+        //             "openOrderSellPremium": 0,
+        //             "execBuyQty": 0,
+        //             "execBuyCost": 0,
+        //             "execSellQty": 0,
+        //             "execSellCost": 0,
+        //             "execQty": 0,
+        //             "execCost": 0,
+        //             "execComm": 0,
+        //             "currentTimestamp": "2020-11-09T06:53:59.893Z",
+        //             "currentQty": 0,
+        //             "currentCost": 0,
+        //             "currentComm": 0,
+        //             "realisedCost": 0,
+        //             "unrealisedCost": 0,
+        //             "grossOpenCost": 0,
+        //             "grossOpenPremium": 0,
+        //             "grossExecCost": 0,
+        //             "isOpen": true,
+        //             "markPrice": 0,
+        //             "markValue": 0,
+        //             "riskValue": 0,
+        //             "homeNotional": 0,
+        //             "foreignNotional": 0,
+        //             "posState": "string",
+        //             "posCost": 0,
+        //             "posCost2": 0,
+        //             "posCross": 0,
+        //             "posInit": 0,
+        //             "posComm": 0,
+        //             "posLoss": 0,
+        //             "posMargin": 0,
+        //             "posMaint": 0,
+        //             "posAllowance": 0,
+        //             "taxableMargin": 0,
+        //             "initMargin": 0,
+        //             "maintMargin": 0,
+        //             "sessionMargin": 0,
+        //             "targetExcessMargin": 0,
+        //             "varMargin": 0,
+        //             "realisedGrossPnl": 0,
+        //             "realisedTax": 0,
+        //             "realisedPnl": 0,
+        //             "unrealisedGrossPnl": 0,
+        //             "longBankrupt": 0,
+        //             "shortBankrupt": 0,
+        //             "taxBase": 0,
+        //             "indicativeTaxRate": 0,
+        //             "indicativeTax": 0,
+        //             "unrealisedTax": 0,
+        //             "unrealisedPnl": 0,
+        //             "unrealisedPnlPcnt": 0,
+        //             "unrealisedRoePcnt": 0,
+        //             "simpleQty": 0,
+        //             "simpleCost": 0,
+        //             "simpleValue": 0,
+        //             "simplePnl": 0,
+        //             "simplePnlPcnt": 0,
+        //             "avgCostPrice": 0,
+        //             "avgEntryPrice": 0,
+        //             "breakEvenPrice": 0,
+        //             "marginCallPrice": 0,
+        //             "liquidationPrice": 0,
+        //             "bankruptPrice": 0,
+        //             "timestamp": "2020-11-09T06:53:59.894Z",
+        //             "lastPrice": 0,
+        //             "lastValue": 0
+        //         }
+        //     ]
+        //
+        // todo unify parsePosition/parsePositions
+        return response;
+    }
+
     isFiat (currency) {
         if (currency === 'EUR') {
             return true;
@@ -1471,7 +1570,7 @@ module.exports = class bitmex extends Exchange {
         const response = await this.privatePostUserRequestWithdrawal (this.extend (request, params));
         return {
             'info': response,
-            'id': response['transactID'],
+            'id': this.safeString (response, 'transactID'),
         };
     }
 

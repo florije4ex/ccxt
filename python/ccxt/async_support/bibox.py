@@ -35,6 +35,7 @@ class bibox(Exchange):
             'name': 'Bibox',
             'countries': ['CN', 'US', 'KR'],
             'version': 'v1',
+            'hostname': 'bibox365.com',
             'has': {
                 'cancelOrder': True,
                 'CORS': False,
@@ -74,13 +75,13 @@ class bibox(Exchange):
             },
             'urls': {
                 'logo': 'https://user-images.githubusercontent.com/51840849/77257418-3262b000-6c85-11ea-8fb8-20bdf20b3592.jpg',
-                'api': 'https://api.bibox.com',
-                'www': 'https://www.bibox.com',
+                'api': 'https://api.{hostname}',
+                'www': 'https://www.bibox365.com',
                 'doc': [
                     'https://biboxcom.github.io/en/',
                 ],
                 'fees': 'https://bibox.zendesk.com/hc/en-us/articles/360002336133',
-                'referral': 'https://w2.bibox.com/login/register?invite_code=05Kj3I',
+                'referral': 'https://w2.bibox365.com/login/register?invite_code=05Kj3I',
             },
             'api': {
                 'public': {
@@ -139,6 +140,8 @@ class bibox(Exchange):
                 '4003': DDoSProtection,  # server busy please try again later
             },
             'commonCurrencies': {
+                'BOX': 'DefiBox',
+                'BPT': 'BlockPool Token',
                 'KEY': 'Bihu',
                 'MTC': 'MTC Mesh Network',  # conflict with MTC Docademic doc.com Token https://github.com/ccxt/ccxt/issues/6081 https://github.com/ccxt/ccxt/issues/3025
                 'PAI': 'PCHAIN',
@@ -288,7 +291,8 @@ class bibox(Exchange):
         }
         response = await self.publicGetMdata(self.extend(request, params))
         tickers = self.parse_tickers(response['result'], symbols)
-        return self.index_by(tickers, 'symbol')
+        result = self.index_by(tickers, 'symbol')
+        return self.filter_by_array(result, 'symbol', symbols)
 
     def parse_trade(self, trade, market=None):
         timestamp = self.safe_integer_2(trade, 'time', 'createdAt')
@@ -322,7 +326,7 @@ class bibox(Exchange):
             cost = price * amount
         if feeCost is not None:
             fee = {
-                'cost': feeCost,
+                'cost': -feeCost,
                 'currency': feeCurrency,
                 'rate': feeRate,
             }
@@ -419,6 +423,52 @@ class bibox(Exchange):
             'body': {},
         }
         response = await self.privatePostTransfer(self.extend(request, params))
+        #
+        #     {
+        #         "result":[
+        #             {
+        #                 "result":[
+        #                     {
+        #                         "totalBalance":"14.57582269",
+        #                         "balance":"14.57582269",
+        #                         "freeze":"0.00000000",
+        #                         "id":60,
+        #                         "symbol":"USDT",
+        #                         "icon_url":"/appimg/USDT_icon.png",
+        #                         "describe_url":"[{\"lang\":\"zh-cn\",\"link\":\"https://bibox.zendesk.com/hc/zh-cn/articles/115004798234\"},{\"lang\":\"en-ww\",\"link\":\"https://bibox.zendesk.com/hc/en-us/articles/115004798234\"}]",
+        #                         "name":"USDT",
+        #                         "enable_withdraw":1,
+        #                         "enable_deposit":1,
+        #                         "enable_transfer":1,
+        #                         "confirm_count":2,
+        #                         "is_erc20":1,
+        #                         "forbid_info":null,
+        #                         "describe_summary":"[{\"lang\":\"zh-cn\",\"text\":\"USDT 是 Tether 公司推出的基于稳定价值货币美元（USD）的代币 Tether USD（简称USDT），1USDT=1美元，用户可以随时使用 USDT 与 USD 进行1:1的兑换。\"},{\"lang\":\"en-ww\",\"text\":\"USDT is a cryptocurrency asset issued on the Bitcoin blockchain via the Omni Layer Protocol. Each USDT unit is backed by a U.S Dollar held in the reserves of the Tether Limited and can be redeemed through the Tether Platform.\"}]",
+        #                         "total_amount":4776930644,
+        #                         "supply_amount":4642367414,
+        #                         "price":"--",
+        #                         "contract_father":"OMNI",
+        #                         "supply_time":"--",
+        #                         "comment":null,
+        #                         "contract":"31",
+        #                         "original_decimals":8,
+        #                         "deposit_type":0,
+        #                         "hasCobo":0,
+        #                         "BTCValue":"0.00126358",
+        #                         "CNYValue":"100.93381445",
+        #                         "USDValue":"14.57524654",
+        #                         "children":[
+        #                             {"type":"OMNI","symbol":"USDT","enable_deposit":1,"enable_withdraw":1,"confirm_count":2},
+        #                             {"type":"TRC20","symbol":"tUSDT","enable_deposit":1,"enable_withdraw":1,"confirm_count":20},
+        #                             {"type":"ERC20","symbol":"eUSDT","enable_deposit":1,"enable_withdraw":1,"confirm_count":25}
+        #                         ]
+        #                     },
+        #                 ],
+        #                 "cmd":"transfer/coinList"
+        #             }
+        #         ]
+        #     }
+        #
         currencies = self.safe_value(response, 'result')
         result = {}
         for i in range(0, len(currencies)):
@@ -709,6 +759,7 @@ class bibox(Exchange):
             'lastTradeTimestamp': None,
             'symbol': symbol,
             'type': type,
+            'timeInForce': None,
             'side': side,
             'price': price,
             'amount': amount,
@@ -879,7 +930,7 @@ class bibox(Exchange):
         }
 
     def sign(self, path, api='public', method='GET', params={}, headers=None, body=None):
-        url = self.urls['api'] + '/' + self.version + '/' + path
+        url = self.implode_params(self.urls['api'], {'hostname': self.hostname}) + '/' + self.version + '/' + path
         cmds = self.json([params])
         if api == 'public':
             if method != 'GET':

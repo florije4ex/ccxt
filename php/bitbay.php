@@ -229,6 +229,9 @@ class bitbay extends Exchange {
                 'REQUEST_TIMESTAMP_TOO_OLD' => '\\ccxt\\InvalidNonce',
                 'PERMISSIONS_NOT_SUFFICIENT' => '\\ccxt\\PermissionDenied',
             ),
+            'commonCurrencies' => array(
+                'GGC' => 'Global Game Coin',
+            ),
         ));
     }
 
@@ -340,22 +343,7 @@ class bitbay extends Exchange {
         //     }
         //
         $marketId = $this->safe_string($order, 'market');
-        $symbol = null;
-        if ($marketId !== null) {
-            if (is_array($this->markets_by_id) && array_key_exists($marketId, $this->markets_by_id)) {
-                $market = $this->markets_by_id[$marketId];
-            } else {
-                list($baseId, $quoteId) = explode('-', $marketId);
-                $base = $this->safe_currency_code($baseId);
-                $quote = $this->safe_currency_code($quoteId);
-                $symbol = $base . '/' . $quote;
-            }
-        }
-        if ($symbol === null) {
-            if ($market !== null) {
-                $symbol = $market['symbol'];
-            }
-        }
+        $symbol = $this->safe_symbol($marketId, $market, '-');
         $timestamp = $this->safe_integer($order, 'time');
         $amount = $this->safe_float($order, 'startAmount');
         $remaining = $this->safe_float($order, 'currentAmount');
@@ -375,6 +363,7 @@ class bitbay extends Exchange {
             'status' => null,
             'symbol' => $symbol,
             'type' => $this->safe_string($order, 'mode'),
+            'timeInForce' => null,
             'side' => $this->safe_string_lower($order, 'offerType'),
             'price' => $this->safe_float($order, 'rate'),
             'amount' => $amount,
@@ -883,7 +872,7 @@ class bitbay extends Exchange {
             $request['to'] = $this->milliseconds();
             $request['from'] = $request['to'] - $timerange;
         } else {
-            $request['from'] = intval ($since);
+            $request['from'] = intval($since);
             $request['to'] = $this->sum($request['from'], $timerange);
         }
         $response = $this->v1_01PublicGetTradingCandleHistorySymbolResolution (array_merge($request, $params));
@@ -953,33 +942,11 @@ class bitbay extends Exchange {
         }
         $feeCost = $this->safe_float($trade, 'commissionValue');
         $marketId = $this->safe_string($trade, 'market');
-        $base = null;
-        $quote = null;
-        $symbol = null;
-        if ($marketId !== null) {
-            if (is_array($this->markets_by_id) && array_key_exists($marketId, $this->markets_by_id)) {
-                $market = $this->markets_by_id[$marketId];
-                $symbol = $market['symbol'];
-                $base = $market['base'];
-                $quote = $market['quote'];
-            } else {
-                list($baseId, $quoteId) = explode('-', $marketId);
-                $base = $this->safe_currency_code($baseId);
-                $quote = $this->safe_currency_code($quoteId);
-                $symbol = $base . '/' . $quote;
-            }
-        }
-        if ($market !== null) {
-            if ($symbol === null) {
-                $symbol = $market['symbol'];
-            }
-            if ($base === null) {
-                $base = $market['base'];
-            }
-        }
+        $market = $this->safe_market($marketId, $market, '-');
+        $symbol = $market['symbol'];
         $fee = null;
         if ($feeCost !== null) {
-            $feeCcy = ($side === 'buy') ? $base : $quote;
+            $feeCcy = ($side === 'buy') ? $market['base'] : $market['quote'];
             $fee = array(
                 'currency' => $feeCcy,
                 'cost' => $feeCost,
@@ -1038,9 +1005,9 @@ class bitbay extends Exchange {
         );
         if ($type === 'limit') {
             $request['rate'] = $price;
-            $price = floatval ($price);
+            $price = floatval($price);
         }
-        $amount = floatval ($amount);
+        $amount = floatval($amount);
         $response = $this->v1_01PrivatePostTradingOfferSymbol (array_merge($request, $params));
         //
         // unfilled (open order)

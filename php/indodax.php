@@ -98,6 +98,13 @@ class indodax extends Exchange {
                 'timeDifference' => 0, // the difference between system clock and exchange clock
                 'adjustForTimeDifference' => false, // controls the adjustment logic upon instantiation
             ),
+            'commonCurrencies' => array(
+                'STR' => 'XLM',
+                'BCHABC' => 'BCH',
+                'BCHSV' => 'BSV',
+                'DRK' => 'DASH',
+                'NEM' => 'XEM',
+            ),
         ));
     }
 
@@ -154,7 +161,7 @@ class indodax extends Exchange {
         $result = array();
         for ($i = 0; $i < count($response); $i++) {
             $market = $response[$i];
-            $id = $this->safe_string($market, 'id');
+            $id = $this->safe_string($market, 'ticker_id');
             $baseId = $this->safe_string($market, 'traded_currency');
             $quoteId = $this->safe_string($market, 'base_currency');
             $base = $this->safe_currency_code($baseId);
@@ -322,6 +329,15 @@ class indodax extends Exchange {
         return $this->parse_trades($response, $market, $since, $limit);
     }
 
+    public function parse_order_status($status) {
+        $statuses = array(
+            'open' => 'open',
+            'filled' => 'closed',
+            'cancelled' => 'canceled',
+        );
+        return $this->safe_string($statuses, $status, $status);
+    }
+
     public function parse_order($order, $market = null) {
         //
         //     {
@@ -337,12 +353,7 @@ class indodax extends Exchange {
         if (is_array($order) && array_key_exists('type', $order)) {
             $side = $order['type'];
         }
-        $status = $this->safe_string($order, 'status', 'open');
-        if ($status === 'filled') {
-            $status = 'closed';
-        } else if ($status === 'cancelled') {
-            $status = 'canceled';
-        }
+        $status = $this->parse_order_status($this->safe_string($order, 'status', 'open'));
         $symbol = null;
         $cost = null;
         $price = $this->safe_float($order, 'price');
@@ -390,6 +401,7 @@ class indodax extends Exchange {
             'lastTradeTimestamp' => null,
             'symbol' => $symbol,
             'type' => 'limit',
+            'timeInForce' => null,
             'side' => $side,
             'price' => $price,
             'cost' => $cost,
@@ -462,12 +474,9 @@ class indodax extends Exchange {
             $request['pair'] = $market['id'];
         }
         $response = $this->privatePostOrderHistory (array_merge($request, $params));
-        $orders = $this->parse_orders($response['return']['orders'], $market, $since, $limit);
+        $orders = $this->parse_orders($response['return']['orders'], $market);
         $orders = $this->filter_by($orders, 'status', 'closed');
-        if ($symbol !== null) {
-            return $this->filter_by_symbol($orders, $symbol);
-        }
-        return $orders;
+        return $this->filter_by_symbol_since_limit($orders, $symbol, $since, $limit);
     }
 
     public function create_order($symbol, $type, $side, $amount, $price = null, $params = array ()) {
@@ -489,9 +498,11 @@ class indodax extends Exchange {
         }
         $request[$currency] = $amount;
         $result = $this->privatePostTrade (array_merge($request, $params));
+        $data = $this->safe_value($result, 'return', array());
+        $id = $this->safe_string($data, 'order_id');
         return array(
             'info' => $result,
-            'id' => (string) $result['return']['order_id'],
+            'id' => $id,
         );
     }
 

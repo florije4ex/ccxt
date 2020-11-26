@@ -12,7 +12,7 @@ module.exports = class bcex extends Exchange {
         return this.deepExtend (super.describe (), {
             'id': 'bcex',
             'name': 'BCEX',
-            'countries': [ 'CN', 'CA' ],
+            'countries': [ 'CN', 'HK' ],
             'version': '1',
             'has': {
                 'cancelOrder': true,
@@ -99,6 +99,7 @@ module.exports = class bcex extends Exchange {
                 '订单信息不存在': OrderNotFound, // {'code': 1, 'msg': '订单信息不存在'} - 'Order information does not exist'
             },
             'commonCurrencies': {
+                'UNI': 'UNI COIN',
                 'PNT': 'Penta',
             },
             'options': {
@@ -557,6 +558,7 @@ module.exports = class bcex extends Exchange {
             'lastTradeTimestamp': undefined,
             'symbol': symbol,
             'type': type,
+            'timeInForce': undefined,
             'side': side,
             'price': price,
             'cost': cost,
